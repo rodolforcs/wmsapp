@@ -238,7 +238,6 @@ class _LoginWmsState extends State<LoginWms> {
       case UserValidationState.success:
         return const Icon(Icons.check_circle, color: Colors.green);
       case UserValidationState.idle:
-      default:
         return null;
     }
   }

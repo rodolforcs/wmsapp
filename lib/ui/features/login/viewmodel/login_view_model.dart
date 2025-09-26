@@ -4,28 +4,21 @@ import 'package:wmsapp/data/models/app_user_model.dart'; // Importe o modelo de 
 import 'package:wmsapp/core/services/messenger_service.dart';
 import 'package:wmsapp/core/viewmodel/session_view_model.dart'; // Importe a SessionViewModel
 import 'package:wmsapp/data/repositories/auth_repository.dart';
+import 'package:wmsapp/data/repositories/menu_repository.dart';
 
 // Enum para os estados de validação, para um código mais limpo
 enum UserValidationState { idle, loading, success, error }
 
 class LoginViewModel extends ChangeNotifier {
   final AuthRepository _authRepository;
+  final MenuRepository _menuRepository;
 
   LoginViewModel({
     required AuthRepository authRepository,
-  }) : _authRepository = authRepository;
+    required MenuRepository menuRepository,
+  }) : _authRepository = authRepository,
+       _menuRepository = menuRepository;
 
-  /*
-  // 1. Referência à SessionViewModel, recebida via construtor
-  final SessionViewModel _sessionViewModel;
-  final AuthRepository _authRepository;
-
-  LoginViewModel({
-    required SessionViewModel sessionViewModel,
-    required AuthRepository authRepository, // <<<< RECEBA AQUI
-  }) : _sessionViewModel = sessionViewModel,
-       _authRepository = authRepository;
-  */
   // --- ESTADO LOCAL DA TELA DE LOGIN ---
 
   // Estado da validação do usuário no "leave" do campo
@@ -172,12 +165,18 @@ class LoginViewModel extends ChangeNotifier {
       // 2. Chama o método de login do repositório com as credenciais REAIS.
       await _authRepository.login(domain, username, password);
 
+      // Se a autenricação foi bem sucedida, buscar as permissões
+
+      final List<String> userPermissions = await _menuRepository
+          .getModulePermissions();
+
       // 3. SUCESSO! Crie o objeto AppUser com os dados da API.
       // Criamos o objeto do usuario e passamos para o sessionViewModel
       final user = AppUser(
         username: username,
         estabelecimentos: _estabelecimentos,
         selectedEstabelecimento: _selectedEstabelecimento,
+        permissionsModules: userPermissions,
       );
 
       // 3. A MÁGICA ACONTECE AQUI:

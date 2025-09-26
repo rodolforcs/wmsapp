@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:wmsapp/data/repositories/menu_repository.dart';
 import 'package:wmsapp/navigation/app_router.dart';
 import 'package:wmsapp/data/models/app_menu_model.dart';
 
@@ -9,35 +8,21 @@ import 'package:wmsapp/data/models/app_menu_model.dart';
 /// por buscar as permissões do usuário e atualizar o estado `isEnabled` de cada módulo.
 
 class MenuViewModel extends ChangeNotifier {
-  final MenuRepository _menuRepository; // Agora depende do MenuRepository
-
   //Estados da UI
-
-  bool _isLoading = true; // Começa carregando
-  bool get isLoading => _isLoading;
-
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
-
   // A lista agora é o tipo correto: AppMenuModel.
   List<AppMenuModel> _modulos = [];
   List<AppMenuModel> get modulos => _modulos;
 
-  MenuViewModel({required MenuRepository menuRepository})
-    : _menuRepository = menuRepository {
-    // Inicializa a lista de módulos e busca as permissões.
-    _initialize();
-  }
-
-  Future<void> _initialize() async {
-    _loadModules(); // Carrega a estrutura dos módulos
-    await _fetchPermissions();
+  /// O construtor agora recebe APENAS a lista de permissões.
+  /// Ele não precisa mais do MenuRepository.
+  MenuViewModel({required List<String> userPermissions}) {
+    _loadModules(userPermissions);
   }
 
   /// _loadModules: Carrega a lista estática de todos os módulos possíveis.
-  void _loadModules() {
+  void _loadModules(List<String> permissions) {
     // A implementação usa a classe AppMenuModel importada.
-    _modulos = [
+    final allModulos = [
       AppMenuModel(
         label: 'Estoque',
         icon: Icons.inventory_2,
@@ -59,28 +44,18 @@ class MenuViewModel extends ChangeNotifier {
         route: '/qualidade',
       ),
     ];
-  }
 
-  /// Busca as permissões e atualiza os módulos.
-  Future<void> _fetchPermissions() async {
-    try {
-      // Pede as permissões ao repositório.
-      final userPermissions = await _menuRepository.getModulePermissions();
-
-      // Itera sobre os módulos e atualiza o estado 'isEnabled'.
-      for (var modulo in _modulos) {
-        // Verifica se a lista de permissões contém o nome do módulo.
-        if (userPermissions.contains(modulo.label)) {
-          modulo.isEnabled = true;
-        }
+    // Itera e habilita apenas os módulos permitidos
+    for (var modulo in allModulos) {
+      if (permissions.contains(modulo.label)) {
+        modulo.isEnabled = true;
       }
-      _errorMessage = null;
-    } catch (e) {
-      _errorMessage = 'Erro ao carregar permissões: ${e.toString()}';
-    } finally {
-      // Finaliza o estado de carregamento e notifica a UI para se reconstruir.
-      _isLoading = false;
-      notifyListeners();
     }
+    // 5. Atribui a lista, agora com os estados de `isEnabled` corretos,
+    //    à variável de estado do ViewModel.
+    _modulos = allModulos;
+    // Nota: Não é necessário chamar `notifyListeners()` aqui porque o ViewModel
+    // está sendo construído. A UI que o "assiste" (`watch`) será construída
+    // com este estado inicial automaticamente.
   }
 }

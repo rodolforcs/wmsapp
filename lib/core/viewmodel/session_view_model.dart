@@ -8,6 +8,7 @@ class SessionViewModel extends ChangeNotifier {
   bool get isLoggedIn => _currentUser != null;
 
   String? get selectedEstabelecimento => _currentUser?.selectedEstabelecimento;
+  List<String> get permissionsModule => _currentUser?.permissionsModules ?? [];
 
   //Método chamada pela LoginViewModel para iniciar a sessão
   void loginSuccess(AppUser user) {

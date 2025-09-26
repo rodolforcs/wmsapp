@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wmsapp/core/viewmodel/session_view_model.dart';
 import 'package:wmsapp/ui/features/login/view/login_screen.dart';
-import 'package:wmsapp/ui/features/menu/menu_wms_app.dart';
 import 'package:wmsapp/ui/features/menu/view/menu_screen.dart';
 
 class AppRouter {

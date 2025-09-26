@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wmsapp/data/repositories/auth_repository.dart';
-import 'package:wmsapp/data/services/http_api_service.dart';
-import 'package:wmsapp/data/services/i_api_service.dart';
 import 'package:wmsapp/navigation/app_router.dart';
-import 'package:wmsapp/ui/features/menu/menu_wms_app.dart';
 import 'package:wmsapp/core/services/messenger_service.dart';
 import 'package:wmsapp/core/themes/theme.dart';
 import 'package:wmsapp/core/viewmodel/session_view_model.dart';
-import 'package:wmsapp/ui/features/login/view/login_screen.dart';
-import 'package:wmsapp/ui/features/login/viewmodel/login_view_model.dart';
 
 class WmsMainApp extends StatefulWidget {
   const WmsMainApp({super.key});

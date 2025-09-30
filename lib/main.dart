@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wmsapp/core/viewmodel/session_view_model.dart';
+import 'package:wmsapp/data/models/app_permissions_model.dart';
 import 'package:wmsapp/data/repositories/auth_repository.dart';
 import 'package:wmsapp/data/repositories/menu_repository.dart';
 import 'package:wmsapp/data/services/http_api_service.dart';
@@ -65,13 +66,22 @@ Future<void> main() async {
         // Ele será recriado sempre que a sessão mudar (login/logout).
         ChangeNotifierProxyProvider<SessionViewModel, MenuViewModel>(
           // `create` é chamado apenas uma vez. Pode retornar um estado inicial vazio.
-          create: (context) => MenuViewModel(userPermissions: []),
+          create: (context) =>
+              MenuViewModel(permissionsModules: AppPermissionsModel()),
 
           // `update` é a parte importante. Ele é chamado quando o SessionViewModel (a dependência) notifica uma mudança.
           // Ele pega as novas permissões da sessão e cria uma nova instância do MenuViewModel com elas.
-          update: (context, session, previousMenuViewModel) => MenuViewModel(
-            userPermissions: session.permissionsModule,
-          ),
+          update: (context, session, previousMenuViewModel) {
+            print(
+              '[ProxyProvider UPDATE] Recriando MenuViewModel com permissões para ${session.currentUser?.codUsuario ?? "ninguém"}.',
+            );
+            print(
+              '[ProxyProvider UPDATE] Permissão de Estoque: ${session.permissionsModules.estoque}',
+            );
+            return MenuViewModel(
+              permissionsModules: session.permissionsModules,
+            );
+          },
         ),
       ],
       // O filho de toda essa árvode de providers é o seu App.

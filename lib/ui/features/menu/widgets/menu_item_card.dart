@@ -13,7 +13,7 @@ class MenuItemCard extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onTap,
-    this.isEnabled = true, // Por padrão, o card é habilitado.
+    this.isEnabled = false, // Por padrão, o card é habilitado.
   });
 
   final String label;

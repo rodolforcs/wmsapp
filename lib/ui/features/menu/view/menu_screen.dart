@@ -1,82 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wmsapp/core/viewmodel/session_view_model.dart';
-import 'package:wmsapp/navigation/app_router.dart';
-import 'package:wmsapp/ui/features/menu/widgets/menu_item_card.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wmsapp/core/viewmodel/session_view_model.dart';
+import 'package:wmsapp/ui/features/menu/viewmodel/menu_view_model.dart';
+import 'package:wmsapp/ui/features/menu/widgets/menu_item_card.dart';
 
-/// MenuScreen: A tela principal após o login, exibindo os módulos disponíveis
-/// em um formato de grade responsiva.
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Acessa a SessionViewModel para obetar a informações do usuário, se necessário.
+    // 1. Ouve as mudanças no MenuViewModel.
+    // Sempre que o MenuViewModel for recriado (após o login), esta tela será reconstruída.
+    final menuViewModel = context.watch<MenuViewModel>();
+
+    // Pega o usuário da sessão para exibir o nome.
     final user = context.watch<SessionViewModel>().currentUser;
 
-    // Lista de módulos. No futuro, isso virá do MenuViewModel,
-    // possivelmente filtrado pelas permissões do usuário.
-    // Por enquanto, vamos definir os dados diretamente na UI.
-    final List<Map<String, dynamic>> modulos = [
-      {
-        'label': 'Estoque',
-        'icon': Icons.inventory_2,
-        'route': AppRouter.estoque,
-      },
-      {
-        'label': 'Expedição',
-        'icon': Icons.local_shipping,
-        'route': '/expedicao',
-      }, // Exemplo de rota
-      {
-        'label': 'Produção',
-        'icon': Icons.precision_manufacturing,
-        'route': '/producao',
-      }, // Exemplo de rota
-      {
-        'label': 'Qualidade',
-        'icon': Icons.high_quality,
-        'route': '/qualidade',
-      }, // Exemplo de rota
-    ];
+    print(
+      '[MenuScreen BUILD] Reconstruindo tela. Permissão de Estoque: ${menuViewModel.modulos.isNotEmpty ? menuViewModel.modulos.first.isEnabled : 'lista vazia'}',
+    );
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Bem-vindo, ${user?.username.toUpperCase()}'),
+        title: Text('Bem-vindo, ${user?.username.toUpperCase() ?? ''}'),
         centerTitle: true,
-        // Futuramente, aqui entrará o botão de Logout.
+        // Ações, como o botão de logout, virão aqui.
         actions: [
-          // IconButton(icon: Icon(Icons.logout), onPressed: () { /* Lógica de logout */ }),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: () {
+              // Chama o método de logout do SessionViewModel.
+              // Usamos context.read() porque estamos dentro de um callback (onPressed)
+              // e não precisamos que este widget específico reconstrua quando o estado mudar.
+              // Apenas queremos disparar a ação.
+              context.read<SessionViewModel>().logout();
+            },
+          ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: GridView.builder(
-          // SliverGridDelegateWithMaxCrossAxisExtent é ótimo para responsividade.
-          // Ele cria o máximo de colunas possível, onde cada coluna tem no mínimo 180 pixels de largura.
-          // - Em um celular, isso geralmente resulta em 2 colunas.
-          // - Em um tablet, pode resultar em 3, 4 ou mais colunas.
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 200, // Largura máxima de cada item da grade.
-            crossAxisSpacing: 16, // Espaçamento horizontal entre os itens.
-            childAspectRatio:
-                1.0, // Proporção (1.0 significa que os itens serão quadrado)
+            maxCrossAxisExtent: 200,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16, // Adicionado para consistência
+            childAspectRatio: 1.0,
           ),
-          itemCount: modulos.length, // O número de itens da grade.
+          // 2. Usa a lista de módulos que vem do MenuViewModel.
+          itemCount: menuViewModel.modulos.length,
           itemBuilder: (context, index) {
-            final modulo = modulos[index];
+            // Pega o módulo específico da lista do ViewModel.
+            final modulo = menuViewModel.modulos[index];
 
+            // 3. Passa TODOS os dados do modelo para o card, incluindo 'isEnabled'.
             return MenuItemCard(
-              label: modulo['label'],
-              icon: modulo['icon'],
+              label: modulo.label,
+              icon: modulo.icon,
+              isEnabled: modulo.isEnabled, // <-- A PEÇA FUNDAMENTAL
               onTap: () {
-                // Ação ao clicar: Navega para a rota definida para o módulo.
-                // Usamos context.push para empilhar a nova tela sobre o menu.
-                print(
-                  'Navegando para ${modulo['route']}',
-                ); // Log para depuração
-                context.push(modulo['route']);
+                // A lógica de onTap agora verifica se o card está habilitado.
+                if (modulo.isEnabled) {
+                  print('Navegando para ${modulo.route}');
+                  context.push(modulo.route);
+                } else {
+                  print('Módulo ${modulo.label} está desabilitado.');
+                }
               },
             );
           },

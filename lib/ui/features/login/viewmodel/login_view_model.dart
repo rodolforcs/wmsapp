@@ -131,26 +131,6 @@ class LoginViewModel extends ChangeNotifier {
       MessengerService.showError('Usuário e senha são obrigatórios.');
       return null;
     }
-    /*
-    /******************************************************************
-     * DEPURAÇÃO DETALHADA
-     ******************************************************************/
-    print('--- INÍCIO DA DEPURAÇÃO performLogin ---');
-    print(
-      '1. Valor de _selectedEstabelecimento: "${_selectedEstabelecimento}"',
-    );
-    print(
-      '2. Tipo de _selectedEstabelecimento: ${_selectedEstabelecimento.runtimeType}',
-    );
-    print('3. É nulo? ${_selectedEstabelecimento == null}');
-    print(
-      '4. Lista de estabelecimentos está vazia? ${estabelecimentos.isEmpty}',
-    );
-    print(
-      '5. Condição completa (estabelecimentos.isNotEmpty && _selectedEstabelecimento == null): ${estabelecimentos.isNotEmpty && _selectedEstabelecimento == null}',
-    );
-    print('--- FIM DA DEPURAÇÃO ---');
-    */
     if (_estabelecimentos.isNotEmpty && _selectedEstabelecimento == null) {
       print('$_estabelecimentos.isNotEmpty $selectedEstabelecimento');
       MessengerService.showError('Por favor, selecione um estabelecimento.');
@@ -162,39 +142,45 @@ class LoginViewModel extends ChangeNotifier {
 
     String? errorMessage;
     try {
-      // 2. Chama o método de login do repositório com as credenciais REAIS.
-      await _authRepository.login(domain, username, password);
+      // ETAPA 1: Autenticar e obter os dados do usuário.
+      final loginResponse = await _authRepository.login(
+        domain,
+        username,
+        password,
+      );
+      print(
+        '[LoginViewModel] Resposta do Login: $loginResponse',
+      ); // DEBUG: Veja a resposta completa
 
-      // Se a autenricação foi bem sucedida, buscar as permissões
-
-      final List<String> userPermissions = await _menuRepository
-          .getModulePermissions();
-
-      // 3. SUCESSO! Crie o objeto AppUser com os dados da API.
-      // Criamos o objeto do usuario e passamos para o sessionViewModel
-      final user = AppUser(
+      // ETAPA 3: Buscar as permissões para este usuário.
+      final userData = await _menuRepository.getUserData(
         username: username,
-        estabelecimentos: _estabelecimentos,
-        selectedEstabelecimento: _selectedEstabelecimento,
-        permissionsModules: userPermissions,
+        password: password,
       );
 
-      // 3. A MÁGICA ACONTECE AQUI:
-      // Chame o método da SessionViewModel para registrar o sucesso globalmente.
-      //_sessionViewModel.loginSuccess(user);
-      Provider.of<SessionViewModel>(context, listen: false).loginSuccess(user);
+      // ETAPA 4: Criar o objeto AppUser completo.
+      final user = AppUser(
+        codUsuario: userData.codUsuario,
+        username: username,
+        password:
+            password, // Armazena a senha para futuras chamadas autenticadas
+        estabelecimentos: _estabelecimentos,
+        selectedEstabelecimento: _selectedEstabelecimento,
+        permissionsModules: userData.permissions,
+      );
 
-      // Não precisamos mais fazer nada. A SessionViewModel vai notificar
-      // o main.dart, que vai trocar a tela automaticamente.
+      // ETAPA 5: Iniciar a sessão.
+      Provider.of<SessionViewModel>(context, listen: false).loginSuccess(user);
+      print('[LoginViewModel] Processo de login concluído com sucesso.');
     } catch (e) {
-      // 4. Se a autenticação falhou, captura a mensagem de erro.
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      print(
+        '[LoginViewModel] ERRO no processo de login: $errorMessage',
+      ); // DEBUG
       MessengerService.showError(errorMessage);
     } finally {
-      // Garante que o loading pare, mesmo que dê erro.
       _isLoggingIn = false;
       notifyListeners();
     }
-    return errorMessage;
   }
 }

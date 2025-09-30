@@ -82,7 +82,11 @@ class AuthRepository {
   }
 
   // NOVO MÉTODO PARA O LOGIN REAL (com as credenciais do usuário)
-  Future<void> login(String domain, String username, String password) async {
+  Future<Map<String, dynamic>> login(
+    String domain,
+    String username,
+    String password,
+  ) async {
     // Este método pode chamar uma API de "login" ou apenas validar as credenciais
     // fazendo uma chamada simples para qualquer endpoint protegido.
     // Por exemplo, podemos chamar a mesma API de estabelecimentos. Se ela retornar 200 OK,
@@ -96,12 +100,20 @@ class AuthRepository {
         '$username@${dotenv.env['DOMAIN']}'; // Formato usuario@dominio
 
     try {
-      await _apiService.get(
+      final responseBody = await _apiService.get(
         'sec/v1/api_get_user/',
         queryParams: queryParams,
         username: userWithDomain, // Passando o usuário REAL
         password: password, // Passando a senha REAL
       );
+
+      // Retorna o corpo da resposta para quem chamou (o LoginViewModel)
+      // RETORNA o corpo da resposta para o LoginViewModel.
+      print(
+        '[AuthRepository] Login bem-sucedido. Retornando dados do usuário.',
+      );
+      // A função agora retorna o corpo da resposta, como esperado.
+      return responseBody;
       // Se a chamada acima não lançar uma exceção, o login é considerado um sucesso.
     } catch (e) {
       // Se a chamada falhar (ex: 401 Unauthorized), a autenticação falhou.

@@ -14,5 +14,4 @@ abstract class IApiService {
     String? password,
   });
   */
-  Future<List<String>> getModulePermissions();
 }

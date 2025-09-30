@@ -85,25 +85,4 @@ class HttpApiService implements IApiService {
       rethrow; // Re-lança a exceção para ser tratada pela camada do repositório/viewModel.
     }
   }
-
-  /// SIMULAÇÃO: Busca as permissões de módulo do backend.
-  ///
-  /// Quando o backend estiver pronto, este método será substituído por uma
-  /// chamada de API real (ex: usando o pacote `http` ou `dio` ).
-  @override
-  Future<List<String>> getModulePermissions() async {
-    print('[HttpApiService] Buscando permissões do backend (simulação)...');
-
-    // Simula um atraso de rede de 1.5 segundos.
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    // Simula uma resposta bem-sucedida do backend.
-    // Retorna uma lista de strings com os nomes dos módulos permitidos.
-    // IMPORTANTE: Os nomes devem corresponder aos `label` no AppMenuModel.
-    print('[HttpApiService] Permissões recebidas: [Estoque, Qualidade]');
-    return ['Estoque', 'Qualidade'];
-
-    // Exemplo de como seria com um erro:
-    // throw Exception('503 - Serviço indisponível');
-  }
 }

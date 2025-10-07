@@ -12,6 +12,12 @@ class AppPermissionsModel {
     this.producao = false,
     this.qualidade = false,
     this.recebimento = false,
+    this.podeReceber = false,
+    this.podeSeparar = false,
+    this.podeTransferir = false,
+    this.podeEmitirFicha = false,
+    this.podeBaixarReq = false,
+    this.podeEmitirChecklist = false,
   });
   final bool estoque;
   final bool expedicao;
@@ -19,8 +25,15 @@ class AppPermissionsModel {
   final bool qualidade;
   final bool recebimento;
   final bool portaria;
-  // Adicione outras permissões granulares se precisar delas no futuro.
   // Ex: final bool lRegEnt;
+
+  // --- ADICIONE AS PERMISSÕES DAS SUB-OPÇÕES AQUI ---
+  final bool podeReceber; // Ex: "l-est-rec": true
+  final bool podeSeparar; // Ex: "l-est-picking": true
+  final bool podeTransferir; // Ex: "l-est-transf": true
+  final bool podeEmitirFicha; // Ex: l-emis-ficha: true
+  final bool podeBaixarReq; //Ex: l-est-baixa-req: true
+  final bool podeEmitirChecklist; // Ex: l-est-checklist
 
   /// Factory constructor para criar uma instância a partir de um json.
   factory AppPermissionsModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +45,12 @@ class AppPermissionsModel {
       qualidade: json['qualidade'] ?? false,
       recebimento: json['recebimento'] ?? false,
       portaria: json['portaria'] ?? false,
+      podeReceber: json['l-est-rec'] ?? false,
+      podeSeparar: json['l-est-picking'] ?? false,
+      podeTransferir: json['l-est-transf'] ?? false,
+      podeEmitirFicha: json['l-emis-ficha'] ?? false,
+      podeBaixarReq: json['l-est-baixa-req'] ?? false,
+      podeEmitirChecklist: json['podeEmitirChecklist'] ?? false,
     );
   }
 }

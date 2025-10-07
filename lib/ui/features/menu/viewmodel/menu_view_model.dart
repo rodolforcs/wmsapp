@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wmsapp/data/models/app_menu_model.dart';
 import 'package:wmsapp/data/models/app_permissions_model.dart';
+import 'package:wmsapp/navigation/app_router.dart';
 
 class MenuViewModel extends ChangeNotifier {
   List<AppMenuModel> _modulos = [];
@@ -19,7 +20,7 @@ class MenuViewModel extends ChangeNotifier {
       AppMenuModel(
         label: 'Estoque',
         icon: Icons.inventory_2,
-        route: '/estoque',
+        route: AppRouter.estoque,
         isEnabled: false,
       ),
       AppMenuModel(

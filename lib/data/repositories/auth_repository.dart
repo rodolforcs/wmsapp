@@ -16,9 +16,6 @@ class AuthRepository {
 
     final apiUser = dotenv.env['USERAPI'];
     final pwUser = dotenv.env['PWAPI'];
-
-    print('usuário: $apiUser Senha: $pwUser');
-
     try {
       // 1. A chamada à API não muda.
       final responseBody = await _apiService.get(

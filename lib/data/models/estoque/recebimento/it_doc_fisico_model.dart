@@ -31,6 +31,10 @@ class ItDocFisicoModel {
   /// Será preenchido ao juntar com os dados de ItemModel
   ItemModel? itemCadastro;
 
+  final String numPedido;
+  final String numeroOrdem;
+  bool foiConferido;
+
   ItDocFisicoModel({
     required this.nrSequencia,
     required this.codItem,
@@ -38,6 +42,9 @@ class ItDocFisicoModel {
     this.qtdeConferida = 0.0,
     this.rateios,
     this.itemCadastro,
+    this.numPedido = '',
+    this.numeroOrdem = '',
+    this.foiConferido = false,
   });
 
   // ==========================================================================
@@ -100,67 +107,11 @@ class ItDocFisicoModel {
       qtdeConferida: (json['qtde-conferida'] as num?)?.toDouble() ?? 0.0,
       rateios: rateios,
       itemCadastro: itemCadastro,
+      numPedido: json['num-pedido']?.toString() ?? '',
+      numeroOrdem: json['numero-ordem']?.toString() ?? '',
     );
   }
-  /*
-  factory ItDocFisicoModel.fromJson(Map<String, dynamic> json) {
-    // Converte lista de rateios (se existir)
-    List<RatLoteModel>? rateios;
-    if (json['tt-rat-lote'] != null && json['tt-rat-lote'] is List) {
-      rateios = (json['tt-rat-lote'] as List)
-          .map((ratJson) => RatLoteModel.fromJson(ratJson))
-          .toList();
-    }
 
-    // Cria ItemModel com os dados do JSON Progress
-    final itemCadastro = ItemModel(
-      codItem: json['it-codigo']?.toString() ?? '',
-      descrItem: json['desc-item']?.toString() ?? '',
-      unidMedida: json['un']?.toString() ?? 'UN',
-      controlaLote: json['controla-lote'] == true,
-      controlaEndereco: json['controla-ender'] == true,
-    );
-
-    return ItDocFisicoModel(
-      nrSequencia: json['sequencia'] ?? 0,
-      codItem: json['it-codigo'] ?? '',
-      qtdeItem: (json['quantidade'] ?? 0).toDouble(),
-      qtdeConferida: (json['qtde-conferida'] ?? 0).toDouble(),
-      rateios: rateios,
-      itemCadastro: itemCadastro,
-    );
-  }
-*/
-  /*
-  factory ItDocFisicoModel.fromJson(Map<String, dynamic> json) {
-    // Converte lista de rateios (se existir)
-    List<RatLoteModel>? rateios;
-    if (json['tt-rat-lote'] != null && json['tt-rat-lote'] is List) {
-      rateios = (json['tt-rat-lote'] as List)
-          .map((ratJson) => RatLoteModel.fromJson(ratJson))
-          .toList();
-    }
-
-    // Cria ItemModel com os dados do JSON Progress
-    ItemModel itemCadastro = ItemModel(
-      codItem: json['it-codigo']?.toString() ?? '',
-      descrItem: json['desc-item']?.toString() ?? '',
-      unidMedida: json['un']?.toString() ?? 'UN',
-      controlaLote: json['controla-lote'] == true, // ← Converte corretamente
-      controlaEndereco:
-          json['controla-ender'] == true, // ← Converte corretamente
-    );
-
-    return ItDocFisicoModel(
-      nrSequencia: json['sequencia'] as int? ?? 0,
-      codItem: json['it-codigo']?.toString() ?? '',
-      qtdeItem: (json['quantidade'] as num?)?.toDouble() ?? 0.0,
-      qtdeConferida: (json['qtde-conferida'] as num?)?.toDouble() ?? 0.0,
-      rateios: rateios,
-      itemCadastro: itemCadastro,
-    );
-  }
-  */
   // ==========================================================================
   // MÉTODO: To JSON
   // ==========================================================================
@@ -188,6 +139,9 @@ class ItDocFisicoModel {
     double? qtdeConferida,
     List<RatLoteModel>? rateios,
     ItemModel? itemCadastro,
+    String? numPedido,
+    String? numeroOrdem,
+    bool? foiConferido,
   }) {
     return ItDocFisicoModel(
       nrSequencia: nrSequencia ?? this.nrSequencia,
@@ -196,6 +150,9 @@ class ItDocFisicoModel {
       qtdeConferida: qtdeConferida ?? this.qtdeConferida,
       rateios: rateios ?? this.rateios,
       itemCadastro: itemCadastro ?? this.itemCadastro,
+      numPedido: numPedido ?? this.numPedido,
+      numeroOrdem: numeroOrdem ?? this.numeroOrdem,
+      foiConferido: foiConferido ?? this.foiConferido,
     );
   }
 
@@ -216,74 +173,36 @@ class ItDocFisicoModel {
   bool get controlaEndereco => itemCadastro?.controlaEndereco ?? false;
 
   // ==========================================================================
-  // GETTERS - Validações de Rateio
+  // VALIDAÇÃO 1: Quantidade Conferida vs Esperada
   // ==========================================================================
 
-  /// Verifica se tem rateios cadastrados
-  bool get hasRateios => rateios != null && rateios!.isNotEmpty;
-
-  /// Verifica se há divergência entre esperado e conferido
-  bool get temDivergenciaEsperadoVsRecebido {
-    return qtdeConferida > 0 && (qtdeConferida - qtdeItem).abs() > 0.0001;
-  }
-
-  /// Verifica se há divergência entre conferido e soma dos rateios
-  ///
-  /// IMPORTANTE: A soma dos rateios DEVE ser igual à quantidade conferida
-  /// quando o item controla lote/endereço
-  bool get temDivergenciaRateio {
-    // Se não controla lote/endereço, não precisa validar rateio
-    if (!controlaLote && !controlaEndereco) return false;
-
-    // Se não tem rateios mas já conferiu, está divergente
-    if (!hasRateios && qtdeConferida > 0) return true;
-
-    // Se não tem rateios, não tem divergência
-    if (rateios == null || rateios!.isEmpty) return false;
-
-    // Valida se soma dos rateios bate com o conferido
-    final somaRateios = rateios!.fold<double>(
-      0.0,
-      (sum, rat) => sum + rat.qtdeLote,
-    );
-
-    // Usa tolerância para comparação de doubles
-    return qtdeConferida > 0 && (somaRateios - qtdeConferida).abs() > 0.0001;
-  }
-
-  /// Verifica se tem qualquer tipo de divergência
-  bool get temDivergencia {
-    return temDivergenciaEsperadoVsRecebido || temDivergenciaRateio;
-  }
-
+  /*
   /// Verifica se o item foi conferido
   bool get foiConferido {
     return qtdeConferida > 0;
   }
+  */
 
-  /// Verifica se a conferência está correta (sem divergências)
-  bool get conferidoCorreto {
-    return foiConferido && !temDivergencia;
+  /// Verifica se há divergência entre quantidade ESPERADA e CONFERIDA
+  /// Esta validação é independente dos rateios
+  bool get temDivergenciaQuantidade {
+    if (!foiConferido) return false;
+    return qtdeConferida != qtdeItem;
   }
 
-  /// Retorna mensagem de divergência (se houver)
-  String get mensagemDivergencia {
-    if (temDivergenciaEsperadoVsRecebido) {
-      return 'Esperado: ${qtdeItem.toStringAsFixed(2)} | '
-          'Conferido: ${qtdeConferida.toStringAsFixed(2)}';
-    }
-    if (temDivergenciaRateio) {
-      final somaRateios =
-          rateios?.fold<double>(
-            0.0,
-            (sum, rat) => sum + rat.qtdeLote,
-          ) ??
-          0.0;
-      return 'Conferido: ${qtdeConferida.toStringAsFixed(2)} | '
-          'Soma rateios: ${somaRateios.toStringAsFixed(2)}';
-    }
-    return '';
+  /// Verifica se a quantidade conferida está correta (igual ao esperado)
+  /// ✅ Check verde quando conferido == esperado
+  bool get quantidadeConferidaCorreta {
+    if (!foiConferido) return false;
+    return qtdeConferida == qtdeItem;
   }
+
+  // ==========================================================================
+  // VALIDAÇÃO 2: Soma dos Rateios vs Quantidade Conferida
+  // ==========================================================================
+
+  /// Verifica se tem rateios cadastrados
+  bool get hasRateios => rateios != null && rateios!.isNotEmpty;
 
   /// Retorna soma total dos rateios
   double get somaTotalRateios {
@@ -292,10 +211,109 @@ class ItDocFisicoModel {
   }
 
   /// Retorna quantidade ainda não rateada
-  /// Útil para saber quanto ainda precisa ser alocado
   double get qtdeNaoRateada {
     return qtdeConferida - somaTotalRateios;
   }
+
+  /// Verifica se há divergência entre CONFERIDO e SOMA DOS RATEIOS
+  /// ⚠️ Só valida se qtdeConferida > 0
+  /// ⚠️ Só aplica se item controla lote ou endereço
+  bool get temDivergenciaRateio {
+    // Se não conferiu ainda, não tem divergência de rateio
+    if (!foiConferido) return false;
+
+    // Se não controla lote/endereço, não precisa validar rateio
+    if (!controlaLote && !controlaEndereco) return false;
+
+    // Se conferiu mas não tem rateios, está divergente
+    if (!hasRateios) return true;
+
+    // Valida se soma dos rateios bate com o conferido
+    return somaTotalRateios != qtdeConferida;
+  }
+
+  /// Verifica se os rateios estão corretos (soma = conferido)
+  /// ✅ OK quando soma dos rateios == quantidade conferida
+  bool get rateiosCorretos {
+    // Se não conferiu, não tem como validar
+    if (!foiConferido) return false;
+
+    // Se não controla lote/endereço, rateio é opcional
+    if (!controlaLote && !controlaEndereco) return true;
+
+    // Validação: soma rateios == conferido
+    return !temDivergenciaRateio;
+  }
+
+  // ==========================================================================
+  // VALIDAÇÃO COMBINADA: Combina as duas validações
+  // ==========================================================================
+
+  /// Verifica se tem QUALQUER divergência (quantidade OU rateio)
+  bool get temDivergencia {
+    return temDivergenciaQuantidade || temDivergenciaRateio;
+  }
+
+  /// Verifica se está TUDO correto (quantidade E rateios)
+  /// ✅ Check verde principal do card
+  bool get conferidoCorreto {
+    if (!foiConferido) {
+      print('[DEBUG] conferidoCorreto = false (não conferido)');
+      return false;
+    }
+
+    final qtdOk = quantidadeConferidaCorreta;
+    final ratOk = rateiosCorretos;
+
+    print(
+      '[DEBUG] Item $codItem: qtdeItem=$qtdeItem, qtdeConferida=$qtdeConferida',
+    );
+    print('[DEBUG] quantidadeConferidaCorreta=$qtdOk, rateiosCorretos=$ratOk');
+    print('[DEBUG] conferidoCorreto=${qtdOk && ratOk}');
+
+    // Deve estar correto em AMBAS as validações
+    return qtdOk && ratOk;
+  }
+
+  // ==========================================================================
+  // MENSAGENS DE DIVERGÊNCIA
+  // ==========================================================================
+
+  /// Retorna mensagem de divergência de QUANTIDADE
+  String get mensagemDivergenciaQuantidade {
+    if (!temDivergenciaQuantidade) return '';
+    return 'Esperado: ${qtdeItem.toStringAsFixed(2)} | '
+        'Conferido: ${qtdeConferida.toStringAsFixed(2)}';
+  }
+
+  /// Retorna mensagem de divergência de RATEIO
+  String get mensagemDivergenciaRateio {
+    if (!temDivergenciaRateio) return '';
+    return 'Conferido: ${qtdeConferida.toStringAsFixed(2)} | '
+        'Soma rateios: ${somaTotalRateios.toStringAsFixed(2)}';
+  }
+
+  /// Retorna mensagem de divergência combinada (se houver)
+  String get mensagemDivergencia {
+    final mensagens = <String>[];
+
+    if (temDivergenciaQuantidade) {
+      mensagens.add(mensagemDivergenciaQuantidade);
+    }
+
+    if (temDivergenciaRateio) {
+      mensagens.add(mensagemDivergenciaRateio);
+    }
+
+    return mensagens.join('\n');
+  }
+
+  // ==========================================================================
+  // GETTERS LEGADOS (compatibilidade com código antigo)
+  // ==========================================================================
+
+  /// @deprecated Use temDivergenciaQuantidade
+  bool get temDivergenciaEsperadoVsRecebido => temDivergenciaQuantidade;
 
   // ==========================================================================
   // MÉTODOS AUXILIARES

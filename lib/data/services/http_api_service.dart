@@ -13,7 +13,6 @@ class HttpApiService implements IApiService {
     if (username != null && password != null) {
       // 1. junta usuário e senha
       final credentials = '$username:$password';
-      print('Credencials: $credentials');
       // 2. transforma em base64
       final encodeCredentials = base64.encode(utf8.encode(credentials));
       // 3. Adiciona o Header de autorização
@@ -39,9 +38,10 @@ class HttpApiService implements IApiService {
       final headers = _createHeaders(username: username, password: password);
 
       final response = await http.get(url, headers: headers);
-      print('Status da resposta: ${response.statusCode}');
-      print('Corpo da resposta: ${response.body}');
-      print('Header: ${headers}');
+
+      //print('Status da resposta: ${response.statusCode}');
+      //print('Corpo da resposta: ${response.body}');
+      //print('Header: ${headers}');
 
       // Tenta decodificar o corpo da resposta em todos os casos.
       // Se o corpo estiver vazio, retorna um objeto vazio para evitar erros de parsing.

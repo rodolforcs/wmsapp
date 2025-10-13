@@ -14,8 +14,10 @@ class MenuScreen extends StatelessWidget {
     // Sempre que o MenuViewModel for recriado (após o login), esta tela será reconstruída.
     final menuViewModel = context.watch<MenuViewModel>();
 
-    // Pega o usuário da sessão para exibir o nome.
-    final user = context.watch<SessionViewModel>().currentUser;
+    // 2. ✅ MUDANÇA AQUI: Usa READ ao invés de WATCH
+    // read = "me dê o valor AGORA, mas não me avise de mudanças"
+    // watch = "me avise SEMPRE que algo mudar"
+    final user = context.read<SessionViewModel>().currentUser;
 
     print(
       '[MenuScreen BUILD] Reconstruindo tela. Permissão de Estoque: ${menuViewModel.modulos.isNotEmpty ? menuViewModel.modulos.first.isEnabled : 'lista vazia'}',

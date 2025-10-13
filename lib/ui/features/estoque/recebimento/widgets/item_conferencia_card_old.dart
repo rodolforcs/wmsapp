@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/it_doc_fisico_model.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio_tile.dart';
-import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio/rateio_data_table.dart';
-//import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateios_data_table.dart';
 
 // ============================================================================
 // ITEM CONFERENCIA CARD - Card para conferir um item
@@ -40,7 +38,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
     super.initState();
     _controller = TextEditingController(
       text: widget.item.qtdeConferida > 0
-          ? widget.item.qtdeConferida.toStringAsFixed(2)
+          ? widget.item.qtdeConferida.toStringAsFixed(4)
           : '',
     );
     _focusNode = FocusNode();
@@ -76,9 +74,6 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Detecta se é tablet
-    final isTablet = MediaQuery.of(context).size.width > 768;
-
     Color borderColor = Colors.transparent;
     double borderWidth = 1;
 
@@ -128,48 +123,9 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 8),
-
-                      // Linha com Pedido e Ordem
-                      Row(
-                        children: [
-                          if (widget.item.numPedido.isNotEmpty) ...[
-                            Icon(
-                              Icons.shopping_cart_outlined,
-                              size: 14,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Pedido: ${widget.item.numPedido}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                          ],
-                          if (widget.item.numeroOrdem.isNotEmpty) ...[
-                            Icon(
-                              Icons.receipt_outlined,
-                              size: 14,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'OC: ${widget.item.numeroOrdem}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
                       const SizedBox(height: 4),
-
                       Text(
-                        'Quantidade esperada: ${widget.item.qtdeItem.toStringAsFixed(2)} ${widget.item.unidMedida}',
+                        'Quantidade esperada: ${widget.item.qtdeItem.toStringAsFixed(4)} ${widget.item.unidMedida}',
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 14,
@@ -182,7 +138,6 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
               ],
             ),
           ),
-
           // Campo de quantidade conferida
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -205,7 +160,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                     ],
                     onEditingComplete: () => FocusScope.of(context).nextFocus(),
                     decoration: InputDecoration(
-                      hintText: '0.00',
+                      hintText: '0.0000',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -223,8 +178,6 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
               ],
             ),
           ),
-
-          // Expansão de rateios
           ExpansionTile(
             title: Row(
               children: [
@@ -242,89 +195,61 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
               ],
             ),
             subtitle: Text(
-              'Total rateado: ${widget.item.somaTotalRateios.toStringAsFixed(2)} de ${widget.item.qtdeConferida.toStringAsFixed(2)}',
+              'Total rateado: ${widget.item.somaTotalRateios.toStringAsFixed(4)} de ${widget.item.qtdeConferida.toStringAsFixed(2)}',
             ),
             onExpansionChanged: (expanded) {
               setState(() => _isExpanded = expanded);
             },
             children: [
-              // TABLET: Usa DataTable
-              if (isTablet) ...[
-                RateioDataTable(
-                  rateios: widget.item.rateios ?? [],
-                  controlaLote: widget.item.controlaLote, // ← ADICIONE
-                  onRateioChanged: (index, rateioAtualizado) {
-                    // Atualiza o rateio completo
-                    final rateios = List<RatLoteModel>.from(
-                      widget.item.rateios!,
-                    );
-                    rateios[index] = rateioAtualizado;
+              // Dentro do ExpansionTile, antes do map:
+              // Lista de rateios existentes
+              if (widget.item.hasRateios)
+                ...widget.item.rateios!.map((rateio) {
+                  return RateioTile(
+                    key: ValueKey(rateio.chaveRateio),
+                    rateio: rateio,
+                    onQuantidadeChanged: (valor) {
+                      widget.onRateioQuantidadeChanged(
+                        rateio.chaveRateio,
+                        valor,
+                      );
+                    },
+                    onRemover: widget.onRemoverRateio != null
+                        ? () => widget.onRemoverRateio!(rateio.chaveRateio)
+                        : null,
+                    onFocusNext: () => FocusScope.of(context).nextFocus(),
+                  );
+                }),
 
-                    // Notifica mudança de quantidade
-                    widget.onRateioQuantidadeChanged(
-                      rateioAtualizado.chaveRateio,
-                      rateioAtualizado.qtdeLote,
-                    );
-                  },
-                  onRemover: widget.onRemoverRateio != null
-                      ? (index) {
-                          final rateio = widget.item.rateios![index];
-                          widget.onRemoverRateio!(rateio.chaveRateio);
-                        }
-                      : null,
-                  onAdicionar: widget.onAdicionarRateio != null
-                      ? () => _mostrarDialogNovoRateio(context)
-                      : null,
+              // Mensagem se não tiver rateios
+              if (!widget.item.hasRateios)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Nenhum rateio cadastrado',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ),
-              ]
-              // MOBILE: Usa Cards
-              else ...[
-                if (widget.item.hasRateios && widget.item.rateios != null)
-                  ...widget.item.rateios!.map((rateio) {
-                    return RateioTile(
-                      key: ValueKey(rateio.chaveRateio),
-                      rateio: rateio,
-                      onQuantidadeChanged: (valor) {
-                        widget.onRateioQuantidadeChanged(
-                          rateio.chaveRateio,
-                          valor,
-                        );
-                      },
-                      onRemover: widget.onRemoverRateio != null
-                          ? () => widget.onRemoverRateio!(rateio.chaveRateio)
-                          : null,
-                      onFocusNext: () => FocusScope.of(context).nextFocus(),
-                    );
-                  }),
 
-                if (!widget.item.hasRateios)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Nenhum rateio cadastrado',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
+              // Botão para adicionar novo rateio
+              if (widget.onAdicionarRateio != null)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _mostrarDialogNovoRateio(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Adicionar Rateio'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-
-                if (widget.onAdicionarRateio != null)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _mostrarDialogNovoRateio(context),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Adicionar Rateio'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+                ),
             ],
           ),
         ],
@@ -350,11 +275,10 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
   }
 
   void _mostrarDialogNovoRateio(BuildContext context) {
-    final seqController = TextEditingController();
+    final depositoController = TextEditingController();
     final loteController = TextEditingController();
     final quantidadeController = TextEditingController();
     final localizController = TextEditingController();
-    final depositoController = TextEditingController();
     DateTime? dataValidade;
 
     showDialog(
@@ -366,51 +290,21 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: seqController,
-                  keyboardType: TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'Seq',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: depositoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Depósito',
-                    border: OutlineInputBorder(),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: localizController,
-                  decoration: const InputDecoration(
-                    labelText: 'Localização',
-                    border: OutlineInputBorder(),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                ),
-                const SizedBox(height: 12),
-
-                if (widget.item.controlaLote) ...[
+                // Lote (se controla)
+                if (widget.item.controlaLote)
                   TextField(
                     controller: loteController,
                     decoration: const InputDecoration(
-                      labelText: 'Lote *',
+                      labelText: 'Lote',
                       border: OutlineInputBorder(),
                     ),
                     textCapitalization: TextCapitalization.characters,
                   ),
-                  const SizedBox(height: 12),
 
+                if (widget.item.controlaLote) const SizedBox(height: 12),
+
+                // Data de validade (se controla lote)
+                if (widget.item.controlaLote)
                   InkWell(
                     onTap: () async {
                       final data = await showDatePicker(
@@ -445,9 +339,23 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                ],
 
+                if (widget.item.controlaLote) const SizedBox(height: 12),
+
+                // Localização (se controla)
+                if (widget.item.controlaEndereco)
+                  TextField(
+                    controller: localizController,
+                    decoration: const InputDecoration(
+                      labelText: 'Localização',
+                      border: OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+
+                if (widget.item.controlaEndereco) const SizedBox(height: 12),
+
+                // Quantidade
                 TextField(
                   controller: quantidadeController,
                   keyboardType: const TextInputType.numberWithOptions(
@@ -457,10 +365,10 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: InputDecoration(
-                    labelText: 'Quantidade *',
+                    labelText: 'Quantidade',
                     border: const OutlineInputBorder(),
                     helperText:
-                        'Restante: ${widget.item.qtdeNaoRateada.toStringAsFixed(2)}',
+                        'Restante: ${widget.item.qtdeNaoRateada.toStringAsFixed(4)}',
                   ),
                 ),
               ],
@@ -484,22 +392,14 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                   return;
                 }
 
-                if (widget.item.controlaLote && loteController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Informe o lote'),
-                    ),
-                  );
-                  return;
-                }
-
                 final novoRateio = RatLoteModel(
                   codDepos: depositoController.text,
-                  codLocaliz: localizController.text,
                   codLote: loteController.text,
+                  //dtValidade: dataValidade,
+                  codLocaliz: localizController.text,
                   qtdeLote: quantidade,
-                  dtValidade: dataValidade,
                   isEditavel: true,
+                  dtValidade: DateTime.now(),
                 );
 
                 widget.onAdicionarRateio!(novoRateio);

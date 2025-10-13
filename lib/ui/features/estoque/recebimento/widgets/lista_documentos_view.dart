@@ -8,7 +8,7 @@ import 'package:wmsapp/ui/features/estoque/recebimento/widgets/docto_fisico_card
 // ============================================================================
 
 /// Widget que exibe a lista de documentos pendentes com busca
-class ListaDocumentosView extends StatelessWidget {
+class ListaDocumentosView extends StatefulWidget {
   final bool isTablet;
 
   const ListaDocumentosView({
@@ -17,12 +17,17 @@ class ListaDocumentosView extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final viewModel = context.watch<RecebimentoViewModel>();
+  State<ListaDocumentosView> createState() => _ListaDocumentosViewState();
+}
 
+class _ListaDocumentosViewState extends State<ListaDocumentosView> {
+  @override
+  Widget build(BuildContext context) {
+    // ✅ Usa watch APENAS para pegar os dados
+    // Mas separa em widgets menores para evitar rebuild de tudo
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: isTablet
+      appBar: widget.isTablet
           ? null
           : AppBar(
               title: const Text('RECEBIMENTO'),
@@ -31,22 +36,29 @@ class ListaDocumentosView extends StatelessWidget {
       body: Column(
         children: [
           // Header com título e busca
-          _buildHeader(context, viewModel),
+          const _HeaderWidget(),
 
           // Lista de documentos
           Expanded(
-            child: _buildContent(context, viewModel),
+            child: _ContentWidget(isTablet: widget.isTablet),
           ),
         ],
       ),
     );
   }
+}
 
-  // ==========================================================================
-  // HEADER (Título + Busca)
-  // ==========================================================================
+// ============================================================================
+// HEADER WIDGET - Separado para não rebuildar junto com a lista
+// ============================================================================
 
-  Widget _buildHeader(BuildContext context, RecebimentoViewModel viewModel) {
+class _HeaderWidget extends StatelessWidget {
+  const _HeaderWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<RecebimentoViewModel>();
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(16),
@@ -92,14 +104,29 @@ class ListaDocumentosView extends StatelessWidget {
       ),
     );
   }
+}
 
-  // ==========================================================================
-  // CONTENT (Loading / Lista / Vazio / Erro)
-  // ==========================================================================
+// ============================================================================
+// CONTENT WIDGET - Lista de documentos
+// ============================================================================
 
-  Widget _buildContent(BuildContext context, RecebimentoViewModel viewModel) {
-    // ESTADO 1: Loading
-    if (viewModel.isLoading) {
+class _ContentWidget extends StatelessWidget {
+  final bool isTablet;
+
+  const _ContentWidget({required this.isTablet});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<RecebimentoViewModel>();
+
+    // ✅ DEBUG: Ver os estados
+    print(
+      '📊 Lista - isLoading: ${viewModel.isLoading}, isLoadingItens: ${viewModel.isLoadingItens}',
+    );
+
+    // ✅ CORREÇÃO: Usa isLoading apenas para a lista de documentos
+    // (não mostra loading quando está buscando itens da nota)
+    if (viewModel.isLoading && !viewModel.isLoadingItens) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

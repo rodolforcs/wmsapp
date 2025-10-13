@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
+import 'package:wmsapp/data/models/estoque/recebimento/it_doc_fisico_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/recebimento_view_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/item_conferencia_card.dart';
 
@@ -8,13 +9,20 @@ import 'package:wmsapp/ui/features/estoque/recebimento/widgets/item_conferencia_
 // CONFERENCIA VIEW - Tela de conferência de itens do documento
 // ============================================================================
 
-class ConferenciaView extends StatelessWidget {
+class ConferenciaView extends StatefulWidget {
   final bool isTablet;
 
   const ConferenciaView({
     super.key,
     required this.isTablet,
   });
+
+  @override
+  State<ConferenciaView> createState() => _ConferenciaViewState();
+}
+
+class _ConferenciaViewState extends State<ConferenciaView> {
+  bool _mostrarApenasNaoConferidos = true;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +43,7 @@ class ConferenciaView extends StatelessWidget {
   ) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: isTablet
+      appBar: widget.isTablet
           ? null
           : AppBar(
               title: Text('NF ${documento.nroDocto}'),
@@ -59,10 +67,12 @@ class ConferenciaView extends StatelessWidget {
   }
 
   // ==========================================================================
-  // HEADER - Informações do documento
-  // ==========================================================================
-
   Widget _buildHeader(BuildContext context, documento) {
+    final totalItens = documento.itensDoc.length;
+    final itensNaoConferidos = documento.itensDoc
+        .where((item) => !item.foiConferido)
+        .length;
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(16),
@@ -99,8 +109,60 @@ class ConferenciaView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+
+            Row(
+              children: [
+                Expanded(child: _buildProgressBar(documento)),
+                const SizedBox(
+                  width: 12,
+                ),
+                Material(
+                  color: _mostrarApenasNaoConferidos
+                      ? Colors.blue.shade50
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _mostrarApenasNaoConferidos =
+                            !_mostrarApenasNaoConferidos;
+                      });
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _mostrarApenasNaoConferidos
+                              ? Icons.filter_list
+                              : Icons.list,
+                          size: 20,
+                          color: _mostrarApenasNaoConferidos
+                              ? Colors.blue.shade700
+                              : Colors.grey.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _mostrarApenasNaoConferidos
+                              ? 'Pendentes ($itensNaoConferidos))'
+                              : 'Todos ($totalItens)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _mostrarApenasNaoConferidos
+                                ? Colors.blue.shade700
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            /*
             // Progresso da conferência
             _buildProgressBar(documento),
+            */
           ],
         ),
       ),
@@ -187,16 +249,13 @@ class ConferenciaView extends StatelessWidget {
   }
 
   // ==========================================================================
-  // CONTENT - Lista de itens
-  // ==========================================================================
-
   Widget _buildContent(
     BuildContext context,
     RecebimentoViewModel viewModel,
     documento,
   ) {
     // Estado de loading ao buscar itens
-    if (viewModel.isLoading) {
+    if (viewModel.isLoadingItens) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -233,41 +292,79 @@ class ConferenciaView extends StatelessWidget {
       );
     }
 
-    // Lista de itens
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: documento.itensDoc.length,
-      itemBuilder: (context, index) {
-        final item = documento.itensDoc[index];
+    // CRIA A LISTA FILTRADA AQUI
+    final List<ItDocFisicoModel> itensExibidos = _mostrarApenasNaoConferidos
+        ? documento.itensDoc.where((item) => !item.foiConferido).toList()
+        : documento.itensDoc.toList();
 
-        return ItemConferenciaCard(
-          key: ValueKey(item.nrSequencia),
-          item: item,
-          onQuantidadeChanged: (qtd) {
-            viewModel.atualizarQuantidadeItem(item.nrSequencia, qtd);
-          },
-          onRateioQuantidadeChanged: (chave, qtd) {
-            viewModel.atualizarQuantidadeRateio(
-              item.nrSequencia,
-              chave,
-              qtd,
-            );
-          },
-          onAdicionarRateio: (rateio) {
-            viewModel.adicionarRateio(item.nrSequencia, rateio);
-          },
-          onRemoverRateio: (chave) {
-            viewModel.removerRateio(item.nrSequencia, chave);
-          },
-        );
-      },
+    /*
+    // Contagem para o header
+    final itensNaoConferidos = documento.itensDoc
+        .where((item) => !item.foiConferido)
+        .length;
+    */
+    // ... (código da lista vazia, agora usando a lista filtrada)
+    if (itensExibidos.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.filter_list_off, // Ícone mais apropriado
+              size: 64,
+              color: Colors.grey[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Nenhum item pendente encontrado', // Mensagem mais apropriada
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Lista de itens
+    return FocusTraversalGroup(
+      // Grupo de tab do widget ListView.builder
+      policy: OrderedTraversalPolicy(), // ✅ Respeita a ordem dos widgets
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        //itemCount: documento.itensDoc.length,
+        itemCount: itensExibidos.length,
+        itemBuilder: (context, index) {
+          //final item = documento.itensDoc[index];
+          final item = itensExibidos[index];
+
+          return ItemConferenciaCard(
+            key: ValueKey(item.nrSequencia),
+            item: item,
+            onQuantidadeChanged: (qtd) {
+              viewModel.atualizarQuantidadeItem(item.nrSequencia, qtd);
+            },
+            onRateioQuantidadeChanged: (chave, qtd) {
+              viewModel.atualizarQuantidadeRateio(
+                item.nrSequencia,
+                chave,
+                qtd,
+              );
+            },
+            onAdicionarRateio: (rateio) {
+              viewModel.adicionarRateio(item.nrSequencia, rateio);
+            },
+            onRemoverRateio: (chave) {
+              viewModel.removerRateio(item.nrSequencia, chave);
+            },
+          );
+        },
+      ),
     );
   }
 
   // ==========================================================================
-  // FOOTER - Botões de ação
-  // ==========================================================================
-
   Widget _buildFooter(
     BuildContext context,
     RecebimentoViewModel viewModel,
@@ -340,7 +437,7 @@ class ConferenciaView extends StatelessWidget {
             Row(
               children: [
                 // Botão Voltar (apenas mobile)
-                if (!isTablet)
+                if (!widget.isTablet)
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
@@ -353,7 +450,7 @@ class ConferenciaView extends StatelessWidget {
                     ),
                   ),
 
-                if (!isTablet) const SizedBox(width: 12),
+                if (!widget.isTablet) const SizedBox(width: 12),
 
                 // Botão Finalizar
                 Expanded(
@@ -371,7 +468,7 @@ class ConferenciaView extends StatelessWidget {
                                 : await viewModel.finalizarConferencia();
 
                             if (success && context.mounted) {
-                              if (!isTablet) {
+                              if (!widget.isTablet) {
                                 Navigator.of(context).pop();
                               }
                             }
@@ -417,9 +514,6 @@ class ConferenciaView extends StatelessWidget {
   }
 
   // ==========================================================================
-  // ESTADO VAZIO
-  // ==========================================================================
-
   Widget _buildEmpty() {
     return const Center(
       child: Column(
@@ -444,9 +538,6 @@ class ConferenciaView extends StatelessWidget {
   }
 
   // ==========================================================================
-  // CONFIRMAÇÃO DE DIVERGÊNCIA
-  // ==========================================================================
-
   Future<bool> _confirmarFinalizacaoComDivergencia(
     BuildContext context,
     RecebimentoViewModel viewModel,

@@ -7,13 +7,14 @@ import 'package:wmsapp/ui/features/estoque/recebimento/widgets/conferencia_view.
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/lista_documentos_view.dart';
 
 // ============================================================================
-// RECEBIMENTO SCREEN - Tela principal de recebimento
+// RECEBIMENTO SCREEN - Tela principal de recebimento (OTIMIZADA)
 // ============================================================================
 
 /// Tela de recebimento de notas fiscais
 ///
 /// Cria o RecebimentoViewModel localmente (não global)
 /// Responsivo: mobile (fullscreen) ou tablet (split-screen)
+/// OTIMIZADO: Usa Selector para evitar rebuilds desnecessários
 class RecebimentoScreen extends StatelessWidget {
   const RecebimentoScreen({super.key});
 
@@ -41,7 +42,6 @@ class _RecebimentoScreenContent extends StatelessWidget {
   Widget build(BuildContext context) {
     // Detecta se é tablet (largura > 768px)
     final isTablet = MediaQuery.of(context).size.width > 768;
-    final viewModel = context.watch<RecebimentoViewModel>();
 
     // TABLET: Split-screen (lista à esquerda, conferência à direita)
     if (isTablet) {
@@ -53,6 +53,7 @@ class _RecebimentoScreenContent extends StatelessWidget {
         body: Row(
           children: [
             // Lista de documentos (40% da largura)
+            // ✅ NÃO rebuilda quando seleciona documento
             SizedBox(
               width: MediaQuery.of(context).size.width * 0.4,
               child: const ListaDocumentosView(isTablet: true),
@@ -62,10 +63,14 @@ class _RecebimentoScreenContent extends StatelessWidget {
             const VerticalDivider(width: 1, color: Colors.black12),
 
             // Conferência (60% da largura)
+            // ✅ Só rebuilda quando documentoSelecionado muda
             Expanded(
-              child: viewModel.documentoSelecionado != null
-                  ? const ConferenciaView(isTablet: true)
-                  : const Center(
+              child: Selector<RecebimentoViewModel, String?>(
+                selector: (_, viewModel) =>
+                    viewModel.documentoSelecionado?.chaveDocumento,
+                builder: (context, chaveDocumento, _) {
+                  if (chaveDocumento == null) {
+                    return const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -81,37 +86,26 @@ class _RecebimentoScreenContent extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ),
-
-              /*
-              child: ConferenciaView(
-                key: ValueKey('conferencia-view'),
-                isTablet: true,
-                */
+                    );
+                  }
+                  return const ConferenciaView(isTablet: true);
+                },
+              ),
             ),
           ],
         ),
       );
     }
-    // MOBILE: Fullscreen - ✅ Remove Consumer e key
-    return viewModel.documentoSelecionado == null
-        ? const ListaDocumentosView(isTablet: false)
-        : const ConferenciaView(isTablet: false);
 
-    /*
     // MOBILE: Fullscreen (alterna entre lista e conferência)
-    return Consumer<RecebimentoViewModel>(
-      builder: (context, viewModel, _) {
-        final documento = viewModel.documentoSelecionado;
-
-        return documento == null
-            ? const ListaDocumentosView(isTablet: false)
-            : ConferenciaView(
-                key: ValueKey(documento.chaveDocumento),
-                isTablet: false,
-              );
+    // ✅ Só rebuilda quando documentoSelecionado muda
+    return Selector<RecebimentoViewModel, bool>(
+      selector: (_, viewModel) => viewModel.documentoSelecionado != null,
+      builder: (context, temDocumentoSelecionado, _) {
+        return temDocumentoSelecionado
+            ? const ConferenciaView(isTablet: false)
+            : const ListaDocumentosView(isTablet: false);
       },
-      
-    );*/
+    );
   }
 }

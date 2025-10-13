@@ -18,6 +18,7 @@ class RatLoteModel {
   double qtdeLote;
   final bool isEditavel;
   final DateTime? dtValidade;
+  final int sequencia;
 
   RatLoteModel({
     this.codDepos = '',
@@ -26,6 +27,7 @@ class RatLoteModel {
     this.qtdeLote = 0.0,
     this.isEditavel = false,
     this.dtValidade,
+    this.sequencia = 0,
   });
 
   // ==========================================================================
@@ -45,6 +47,9 @@ class RatLoteModel {
       dtValidade: json['dt-vali-lote'] is String
           ? DateTime.tryParse(json['dt-vali-lote'])
           : null,
+      sequencia: json['sequencia'] is int
+          ? json['sequencia']
+          : int.tryParse(json['sequencia']?.toString() ?? '') ?? 0,
     );
   }
 
@@ -61,6 +66,7 @@ class RatLoteModel {
       'qtde-lote': qtdeLote,
       if (dtValidade != null) 'dt-vali-lote': dtValidade!.toIso8601String(),
       'is-editavel': isEditavel,
+      'sequencia': sequencia,
     };
   }
 
@@ -76,6 +82,7 @@ class RatLoteModel {
     double? qtdeLote,
     bool? isEditavel,
     DateTime? dtValidade,
+    int? sequencia,
   }) {
     return RatLoteModel(
       codDepos: codDepos ?? this.codDepos,
@@ -84,6 +91,7 @@ class RatLoteModel {
       qtdeLote: qtdeLote ?? this.qtdeLote,
       isEditavel: isEditavel ?? this.isEditavel,
       dtValidade: dtValidade ?? this.dtValidade,
+      sequencia: sequencia ?? this.sequencia,
     );
   }
 

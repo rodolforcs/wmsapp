@@ -15,12 +15,19 @@ class RecebimentoViewModel extends BaseViewModel {
     required SessionViewModel session,
   }) : _repository = repository,
        _session = session {
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] 🏗️ ViewModel CRIADO (ID: ${identityHashCode(this)}) - Buscando documentos...',
+      );
+    }
     fetchDocumentosPendentes();
   }
 
   List<DoctoFisicoModel> _documentos = [];
   DoctoFisicoModel? _documentoSelecionado;
   String _searchTerm = '';
+  bool _isInitialized = false; // ✅ NOVO: Flag para controlar inicialização
+  bool _isLoadingItens = false;
 
   List<DoctoFisicoModel> get documentos => _documentos;
   DoctoFisicoModel? get documentoSelecionado => _documentoSelecionado;
@@ -39,8 +46,27 @@ class RecebimentoViewModel extends BaseViewModel {
 
   bool get hasDocumentos => _documentos.isNotEmpty;
   bool get semResultados => !isLoading && _documentos.isEmpty;
+  bool get isLoadingItens => _isLoadingItens; // ✅ ADICIONE AQUI
 
   Future<void> fetchDocumentosPendentes() async {
+    // ✅ PROTEÇÃO: Não busca se já está inicializado e não é refresh
+    if (_isInitialized && !isLoading) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] ⚠️ TENTOU buscar de novo, mas JÁ está inicializado. Pulando.',
+        );
+        debugPrint('[RecebimentoVM] Stack trace:');
+        debugPrint(
+          StackTrace.current.toString().split('\n').take(5).join('\n'),
+        );
+      }
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint('[RecebimentoVM] 🔄 FETCH: Buscando lista de documentos...');
+    }
+
     final codEstabel = _session.selectedEstabelecimento;
     if (codEstabel == null || codEstabel.isEmpty) {
       setError('Nenhum estabelecimento selecionado.');
@@ -72,6 +98,7 @@ class RecebimentoViewModel extends BaseViewModel {
 
     if (result != null) {
       _documentos = result;
+      _isInitialized = true; // ✅ Marca como inicializado
 
       if (_documentoSelecionado != null) {
         _documentoSelecionado = _documentos.firstWhere(
@@ -108,9 +135,19 @@ class RecebimentoViewModel extends BaseViewModel {
   }
 
   Future<void> selecionarDocumento(DoctoFisicoModel documento) async {
-    _documentoSelecionado = documento;
-    notifyListeners(); // Smpre notifica aqui primeiro
+    // ✅ OTIMIZAÇÃO: Não notifica se já está selecionado
+    if (_documentoSelecionado?.chaveDocumento == documento.chaveDocumento) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] Documento já selecionado: ${documento.nroDocto}',
+        );
+      }
+      return;
+    }
 
+    _documentoSelecionado = documento;
+
+    // ✅ MUDANÇA: Só notifica se já tem itens (não vai buscar)
     if (documento.itensDoc.isNotEmpty) {
       if (kDebugMode) {
         debugPrint(
@@ -118,10 +155,11 @@ class RecebimentoViewModel extends BaseViewModel {
           '[RecebimentoVM] Documento já possui itens carregados',
         );
       }
+      notifyListeners();
       return;
     }
 
-    ///Busca detalhes complementos do documento
+    /// Busca detalhes complementos do documento
     if (kDebugMode) {
       debugPrint(
         '[RecebimentoVM] Buscando detalhes do documento: ${documento.nroDocto}',
@@ -130,6 +168,55 @@ class RecebimentoViewModel extends BaseViewModel {
     final user = _session.currentUser;
     if (user == null) return;
 
+    // ✅ NOVO: Usa loading separado para itens (NÃO usa runAsync!)
+    _isLoadingItens = true;
+    notifyListeners();
+
+    try {
+      // ✅ IMPORTANTE: NÃO usa runAsync aqui!
+      // runAsync mudaria o isLoading, queremos usar apenas isLoadingItens
+      final result = await _repository.buscarDetalhesDocto(
+        codEstabel: documento.codEstabel,
+        codEmitente: documento.codEmitente,
+        nroDocto: documento.nroDocto,
+        serieDocto: documento.serieDocto,
+        username: user.username,
+        password: user.password,
+      );
+
+      if (result != null) {
+        // Atualiza o documento na lista com os itens carregados
+        final index = _documentos.indexWhere(
+          (d) => d.chaveDocumento == documento.chaveDocumento,
+        );
+
+        if (index >= 0) {
+          _documentos[index] = result;
+        }
+
+        _documentoSelecionado = result;
+
+        if (kDebugMode) {
+          debugPrint(
+            '[RecebimentoVM] Detalhes carregados: ${result.itensDoc.length} itens',
+          );
+        }
+      }
+    } catch (e, stack) {
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] Erro ao buscar detalhes: $e');
+        debugPrint('[RecebimentoVM] Stack: $stack');
+      }
+      // Você pode adicionar tratamento de erro aqui se quiser
+    } finally {
+      // ✅ Sempre desliga o loading, mesmo se der erro
+      _isLoadingItens = false;
+    }
+
+    // ✅ Notifica depois de carregar (ou dar erro)
+    notifyListeners();
+
+    /*
     final result = await runAsync(() async {
       return await _repository.buscarDetalhesDocto(
         codEstabel: documento.codEstabel,
@@ -149,7 +236,6 @@ class RecebimentoViewModel extends BaseViewModel {
 
       if (index >= 0) {
         _documentos[index] = result;
-        // _documentoSelecionado = result;
       }
 
       _documentoSelecionado = result;
@@ -161,7 +247,9 @@ class RecebimentoViewModel extends BaseViewModel {
       }
     }
 
+    // ✅ Só notifica depois de carregar os itens
     notifyListeners();
+    */
   }
 
   void voltarParaLista() {
@@ -176,12 +264,17 @@ class RecebimentoViewModel extends BaseViewModel {
       (item) => item.nrSequencia == nrSequencia,
     );
 
+    // Atualiza APENAS a quantidade conferida digitada pelo usuário
     item.qtdeConferida = quantidade;
 
-    if (item.hasRateios) {
-      item.qtdeConferida = item.rateios!.fold<double>(
-        0.0,
-        (sum, rat) => sum + rat.qtdeLote,
+    // 2. 🔥 LÓGICA ADICIONADA: Recalcula o status de conferência do item
+    //    (Assumindo que seu modelo ItDocFisicoModel tem a propriedade 'quantidade' original)
+    item.foiConferido = item.qtdeConferida >= item.qtdeItem;
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] Quantidade atualizada: Item ${item.codItem}, '
+        'Qtde: $quantidade',
       );
     }
 
@@ -207,10 +300,18 @@ class RecebimentoViewModel extends BaseViewModel {
 
     rateio.qtdeLote = quantidade;
 
+    // AQUI SIM recalcula, pois mudou um rateio
     item.qtdeConferida = item.rateios!.fold<double>(
       0.0,
       (sum, rat) => sum + rat.qtdeLote,
     );
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] Rateio atualizado: ${rateio.chaveRateio}, '
+        'Nova soma: ${item.qtdeConferida}',
+      );
+    }
 
     notifyListeners();
   }
@@ -225,6 +326,7 @@ class RecebimentoViewModel extends BaseViewModel {
     item.rateios ??= [];
     item.rateios!.add(rateio);
 
+    // Recalcula quantidade conferida
     item.qtdeConferida = item.rateios!.fold<double>(
       0.0,
       (sum, rat) => sum + rat.qtdeLote,
@@ -248,6 +350,7 @@ class RecebimentoViewModel extends BaseViewModel {
 
     item.rateios!.removeWhere((rat) => rat.chaveRateio == chaveRateio);
 
+    // Recalcula quantidade conferida
     item.qtdeConferida = item.hasRateios
         ? item.rateios!.fold<double>(0.0, (sum, rat) => sum + rat.qtdeLote)
         : 0.0;
@@ -259,6 +362,35 @@ class RecebimentoViewModel extends BaseViewModel {
     }
   }
 
+  // ==========================================================================
+  // VALIDAÇÕES DE FINALIZAÇÃO
+  // ==========================================================================
+
+  /// Verifica se pode finalizar (para habilitar/desabilitar botão na UI)
+  bool get podeFinalizar {
+    if (_documentoSelecionado == null) return false;
+    return _documentoSelecionado!.podeFinalizar;
+  }
+
+  /// Mensagem explicando por que não pode finalizar
+  String get motivoNaoPodeFinalizar {
+    if (_documentoSelecionado == null) return 'Nenhum documento selecionado';
+
+    final doc = _documentoSelecionado!;
+
+    if (!doc.todosItensConferidos) {
+      final qtd = doc.itensNaoConferidos.length;
+      return 'Existem $qtd ${qtd == 1 ? "item não conferido" : "itens não conferidos"}';
+    }
+
+    if (!doc.todosRateiosCorretos) {
+      final qtd = doc.itensComRateiosIncorretos.length;
+      return 'Existem $qtd ${qtd == 1 ? "item com rateio incorreto" : "itens com rateios incorretos"}';
+    }
+
+    return '';
+  }
+
   Future<bool> finalizarConferencia() async {
     if (_documentoSelecionado == null) {
       MessengerService.showError('Nenhum documento selecionado.');
@@ -266,24 +398,66 @@ class RecebimentoViewModel extends BaseViewModel {
     }
 
     final documento = _documentoSelecionado!;
-
-    if (!documento.todosItensConferidos) {
-      MessengerService.showError(
-        'Por favor, confira todos os itens antes de finalizar.',
-      );
-      return false;
-    }
-
     final user = _session.currentUser;
+
     if (user == null) {
       MessengerService.showError('Usuário não autenticado.');
       return false;
     }
 
-    if (documento.temDivergencias) {
+    // ========================================================================
+    // VALIDAÇÃO 1: Todos os itens devem ter quantidade conferida
+    // ========================================================================
+    if (!documento.todosItensConferidos) {
+      final itensNaoConferidos = documento.itensNaoConferidos;
+      final mensagem =
+          'Existem ${itensNaoConferidos.length} '
+          '${itensNaoConferidos.length == 1 ? "item não conferido" : "itens não conferidos"}.\n\n'
+          'Itens pendentes:\n'
+          '${itensNaoConferidos.map((item) => '• ${item.codItem} - ${item.descrItem}').take(5).join('\n')}'
+          '${itensNaoConferidos.length > 5 ? '\n... e mais ${itensNaoConferidos.length - 5}' : ''}\n\n'
+          'Por favor, confira todos os itens antes de finalizar.';
+
+      MessengerService.showError(mensagem);
       return false;
     }
 
+    // ========================================================================
+    // VALIDAÇÃO 2: Todos os rateios devem estar corretos
+    // ========================================================================
+    if (!documento.todosRateiosCorretos) {
+      final itensRateiosIncorretos = documento.itensComRateiosIncorretos;
+
+      final mensagem =
+          'Existem ${itensRateiosIncorretos.length} '
+          '${itensRateiosIncorretos.length == 1 ? "item com rateio incorreto" : "itens com rateios incorretos"}.\n\n'
+          'A soma dos rateios deve ser igual à quantidade conferida.\n\n'
+          'Itens com problema:\n'
+          '${itensRateiosIncorretos.map((item) => '• ${item.codItem}: '
+              'Conferido ${item.qtdeConferida.toStringAsFixed(2)}, '
+              'Rateado ${item.somaTotalRateios.toStringAsFixed(2)}').take(5).join('\n')}'
+          '${itensRateiosIncorretos.length > 5 ? '\n... e mais ${itensRateiosIncorretos.length - 5}' : ''}';
+
+      MessengerService.showError(mensagem);
+      return false;
+    }
+
+    // ========================================================================
+    // VALIDAÇÃO 3: Verifica se tem divergência de quantidade
+    // ========================================================================
+    if (documento.temDivergenciasQuantidade) {
+      // Neste caso, retorna false para a UI mostrar dialog de confirmação
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] Documento possui divergências de quantidade',
+        );
+      }
+      return false;
+    }
+
+    // ========================================================================
+    // TUDO OK: Finaliza sem divergência
+    // ========================================================================
     return await _finalizarConferenciaComConfirmacao(comDivergencia: false);
   }
 

@@ -59,29 +59,7 @@ class DoctoFisicoModel {
           .toList(),
     );
   }
-  /*
-  factory DoctoFisicoModel.fromJson(Map<String, dynamic> json) {
-    final itensJson = json['itensDoc'] as List? ?? [];
 
-    return DoctoFisicoModel(
-      codEstabel: json['cod-estabel']?.toString() ?? '',
-      codEmitente: json['cod-emitente'] as int? ?? 0,
-      nomeAbreviado: json['nome-abrev'] is String ? json['nome-abrev'] : '',
-      nroDocto: json['nro-docto'] is String ? json['nro-docto'] : '',
-      serieDocto: json['serie-docto'] is String ? json['serie-docto'] : '',
-      dtEmissao: (json['dt-emissao'] is String && json['dt-emissao'] != '')
-          ? DateTime.parse(json['dt-emissao'])
-          : DateTime.now(),
-      tipoNota: _convertTipoNota(json['tipo-nota']),
-      situacao: _convertSituacao(json['situacao']),
-      status: _convertStatus(json['status-atual']),
-      totalItems: json['total-items'] as int? ?? 0,
-      itensDoc: itensJson
-          .map((item) => ItDocFisicoModel.fromJson(item))
-          .toList(),
-    );
-  }
-  */
   // ==========================================================================
   // CONVERSORES DE TIPOS
   // ==========================================================================
@@ -137,6 +115,7 @@ class DoctoFisicoModel {
         return value.toString();
     }
   }
+
   // ==========================================================================
   // MÉTODO: To JSON
   // ==========================================================================
@@ -189,45 +168,117 @@ class DoctoFisicoModel {
   }
 
   // ==========================================================================
-  // GETTERS - Validações e Cálculos
+  // VALIDAÇÕES REFATORADAS - Conferência de Itens
   // ==========================================================================
 
+  /// Verifica se todos os itens foram conferidos (quantidade > 0)
+  bool get todosItensConferidos {
+    if (itensDoc.isEmpty) return false;
+    return itensDoc.every((item) => item.foiConferido);
+  }
+
+  /// Verifica se todos os rateios estão corretos
+  /// (apenas para itens que controlam lote/endereço)
+  bool get todosRateiosCorretos {
+    if (itensDoc.isEmpty) return false;
+
+    // Verifica se todos os itens que precisam de rateio têm rateios corretos
+    return itensDoc.every((item) {
+      // Se não controla lote/endereço, não precisa validar rateio
+      if (!item.controlaLote && !item.controlaEndereco) return true;
+
+      // Se controla, precisa ter rateios corretos
+      return item.rateiosCorretos;
+    });
+  }
+
+  /// Verifica se tem algum item com divergência de quantidade
+  bool get temDivergenciasQuantidade {
+    return itensDoc.any((item) => item.temDivergenciaQuantidade);
+  }
+
+  /// Verifica se tem algum item com divergência de rateio
+  bool get temDivergenciasRateio {
+    return itensDoc.any((item) => item.temDivergenciaRateio);
+  }
+
+  /// Verifica se tem QUALQUER tipo de divergência
+  bool get temDivergencias {
+    return temDivergenciasQuantidade || temDivergenciasRateio;
+  }
+
+  /// Retorna lista de itens não conferidos
+  List<ItDocFisicoModel> get itensNaoConferidos {
+    return itensDoc.where((item) => !item.foiConferido).toList();
+  }
+
+  /// Retorna lista de itens com rateios incorretos
+  List<ItDocFisicoModel> get itensComRateiosIncorretos {
+    return itensDoc.where((item) {
+      if (!item.controlaLote && !item.controlaEndereco) return false;
+      return item.temDivergenciaRateio;
+    }).toList();
+  }
+
+  /// Retorna lista de itens com divergência de quantidade
+  List<ItDocFisicoModel> get itensComDivergenciaQuantidade {
+    return itensDoc.where((item) => item.temDivergenciaQuantidade).toList();
+  }
+
+  /// Retorna lista de itens com qualquer divergência
   List<ItDocFisicoModel> get itensComDivergencia {
     return itensDoc.where((item) => item.temDivergencia).toList();
   }
 
-  bool get temDivergencias {
-    return itensComDivergencia.isNotEmpty;
+  /// Mensagem detalhada dos problemas encontrados
+  String get mensagemProblemasConferencia {
+    final problemas = <String>[];
+
+    if (!todosItensConferidos) {
+      final qtdNaoConferidos = itensNaoConferidos.length;
+      problemas.add(
+        '$qtdNaoConferidos ${qtdNaoConferidos == 1 ? "item não conferido" : "itens não conferidos"}',
+      );
+    }
+
+    if (!todosRateiosCorretos) {
+      final qtdRateiosIncorretos = itensComRateiosIncorretos.length;
+      problemas.add(
+        '$qtdRateiosIncorretos ${qtdRateiosIncorretos == 1 ? "item com rateio incorreto" : "itens com rateios incorretos"}',
+      );
+    }
+
+    return problemas.join('\n');
   }
 
-  bool get todosItensConferidos {
-    return itensDoc.every((item) {
-      // Se controla lote/endereço, precisa ter rateios válidos
-      if (item.controlaLote || item.controlaEndereco) {
-        if (!item.hasRateios) return false;
-        return item.rateios?.every((rat) => rat.qtdeLote > 0) ?? false;
-      }
-      // Se não controla, só verifica se foi conferido
-      return item.qtdeConferida > 0;
-    });
-  }
+  // ==========================================================================
+  // GETTERS - Status da Conferência
+  // ==========================================================================
 
+  /// Verifica se a conferência está OK (tudo conferido e sem divergências)
   bool get conferenciaOk {
-    return todosItensConferidos && !temDivergencias;
+    return todosItensConferidos && todosRateiosCorretos && !temDivergencias;
   }
 
+  /// Verifica se pode finalizar (requisitos mínimos atendidos)
   bool get podeFinalizar {
-    return todosItensConferidos;
+    return todosItensConferidos && todosRateiosCorretos;
   }
 
+  /// Quantidade de itens conferidos
   int get quantidadeItensConferidos {
     return itensDoc.where((item) => item.foiConferido).length;
   }
 
+  /// Porcentagem de itens conferidos
   double get porcentagemConferida {
     if (itensDoc.isEmpty) return 0.0;
     return (quantidadeItensConferidos / itensDoc.length) * 100;
   }
+
+  // ==========================================================================
+  // GETTERS - Informações do Documento
+  // ==========================================================================
 
   bool get isUrgente {
     return status.toLowerCase().contains('urgente');

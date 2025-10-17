@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
 import 'package:wmsapp/data/services/i_api_service.dart';
@@ -91,6 +93,20 @@ class RecebimentoRepository {
         'nro-docto': nroDocto,
         'serie-docto': serieDocto,
       };
+      /*
+      final body = {
+        'tt-doc-fisico': [
+          {
+            'cod-estabel': codEstabel,
+            'cod-emitente': codEmitente,
+            'nro-docto': nroDocto,
+            'serie-docto': serieDocto,
+          },
+        ],
+        'tt-it-doc-fisico': [],
+        'tt-rat-lote': [],
+      };
+      */
 
       print('[RecebimentoRepository] Buscando detalhes do documento...');
 
@@ -101,6 +117,15 @@ class RecebimentoRepository {
         password: password,
       );
 
+      /*
+      final response = await _apiService.post(
+        'rep/v1/api_post_recebimento',
+        body: body,
+        username: userForAuth,
+        password: password,
+      );
+      */
+
       // Navega até o documento dentro da estrutura do dataset
       final items = response['items'] as List;
       if (items.isEmpty) {
@@ -108,6 +133,7 @@ class RecebimentoRepository {
       }
 
       final dataset = items[0]['dsDoctoDetalhes'];
+      //final dataset = items[0]['dsDocto'];
       final doctos = dataset['tt-doc-fisico'] as List;
 
       if (doctos.isEmpty) {
@@ -181,6 +207,80 @@ class RecebimentoRepository {
       return true;
     } catch (e) {
       throw Exception('Erro ao finalizar conferência: ${e.toString()}');
+    }
+  }
+
+  // ==========================================================================
+  // INICIAR CONFERÊNCIA (POST)
+  // ==========================================================================
+
+  /// Inicia conferência de um documento físico
+  /// - Cria tabelas cp-doc-fisico, cp-it-doc-fisico, cp-rat-lote
+  /// - Define versão = 1 nos itens
+  /// - Retorna documento com status "EM_ANDAMENTO"
+  Future<DoctoFisicoModel> iniciarConferencia({
+    required String codEstabel,
+    required int codEmitente,
+    required String nroDocto,
+    required String serieDocto,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      // ⚠️ IMPORTANTE: Adiciona @DOMAIN ao username
+      final userForAuth = '$username@${dotenv.env['DOMAIN']}';
+
+      final body = {
+        "tt-param": [
+          {
+            "cod-estabel": codEstabel,
+            "cod-emitente": codEmitente,
+            "nro-docto": nroDocto,
+            "serie-docto": serieDocto,
+          },
+        ],
+      };
+
+      print('[RecebimentoRepository] Iniciando conferência do documento...');
+
+      // 👇 Adicione este print antes da requisição
+      print("JSON enviado: ${jsonEncode(body)}");
+      // Chama API POST
+      final response = await _apiService.post(
+        'rep/v1/api_post_recebimento/',
+        body: body,
+        username: userForAuth,
+        password: password,
+      );
+
+      // Navega até o documento dentro da estrutura do dataset
+      final items = response['items'] as List;
+      if (items.isEmpty) {
+        throw Exception('Documento não encontrado');
+      }
+
+      final dataset = items[0]['dsDocto'];
+      final doctos = dataset['tt-doc-fisico'] as List;
+
+      if (doctos.isEmpty) {
+        throw Exception('Documento não encontrado');
+      }
+
+      final docJson = Map<String, dynamic>.from(doctos[0]);
+
+      // Extrai os itens e renomeia para o campo que o model espera
+      final itensJson = docJson['tt-it-doc-fisico'] as List? ?? [];
+      docJson['itensDoc'] = itensJson;
+      docJson.remove('tt-it-doc-fisico');
+
+      print('[RecebimentoRepository] Conferência iniciada com sucesso');
+      print('[RecebimentoRepository] Status: ${docJson['status-atual']}');
+      print('[RecebimentoRepository] Itens carregados: ${itensJson.length}');
+
+      return DoctoFisicoModel.fromJson(docJson);
+    } catch (e) {
+      print('[RecebimentoRepository] ERRO: $e');
+      throw Exception('Erro ao iniciar conferência: ${e.toString()}');
     }
   }
 

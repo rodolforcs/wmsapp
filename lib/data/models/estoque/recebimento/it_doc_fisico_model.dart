@@ -27,6 +27,12 @@ class ItDocFisicoModel {
   /// Null se o item não tiver rateios configurados
   List<RatLoteModel>? rateios;
 
+  int versao;
+
+  DateTime? dataUltAlt;
+
+  String usuarioUltAlt;
+
   /// Referência ao cadastro do item (para acessar descrição, etc)
   /// Será preenchido ao juntar com os dados de ItemModel
   ItemModel? itemCadastro;
@@ -45,6 +51,9 @@ class ItDocFisicoModel {
     this.numPedido = '',
     this.numeroOrdem = '',
     this.foiConferido = false,
+    required this.versao,
+    this.dataUltAlt,
+    this.usuarioUltAlt = '',
   });
 
   // ==========================================================================
@@ -109,6 +118,7 @@ class ItDocFisicoModel {
       itemCadastro: itemCadastro,
       numPedido: json['num-pedido']?.toString() ?? '',
       numeroOrdem: json['numero-ordem']?.toString() ?? '',
+      versao: json['versao'] as int? ?? 0,
     );
   }
 
@@ -142,6 +152,7 @@ class ItDocFisicoModel {
     String? numPedido,
     String? numeroOrdem,
     bool? foiConferido,
+    int? versao,
   }) {
     return ItDocFisicoModel(
       nrSequencia: nrSequencia ?? this.nrSequencia,
@@ -153,6 +164,7 @@ class ItDocFisicoModel {
       numPedido: numPedido ?? this.numPedido,
       numeroOrdem: numeroOrdem ?? this.numeroOrdem,
       foiConferido: foiConferido ?? this.foiConferido,
+      versao: versao ?? this.versao,
     );
   }
 

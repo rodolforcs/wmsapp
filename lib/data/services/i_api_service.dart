@@ -6,12 +6,11 @@ abstract class IApiService {
     String? username,
     String? password,
   });
-  /*
+
   Future<Map<String, dynamic>> post(
     String endpoint, {
     required Map<String, dynamic> body,
     String? username,
     String? password,
   });
-  */
 }

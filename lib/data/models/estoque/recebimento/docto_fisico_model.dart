@@ -15,6 +15,9 @@ class DoctoFisicoModel {
   final String situacao;
   final String status;
   final int totalItems;
+  final DateTime? dtInicioConf;
+  final String? usuarioConf;
+  final DateTime? dtUltSinc;
   final List<ItDocFisicoModel> itensDoc;
 
   DoctoFisicoModel({
@@ -29,6 +32,9 @@ class DoctoFisicoModel {
     required this.status,
     required this.totalItems,
     required this.itensDoc,
+    this.dtInicioConf,
+    this.usuarioConf,
+    this.dtUltSinc,
   });
 
   // ==========================================================================
@@ -150,6 +156,9 @@ class DoctoFisicoModel {
     String? situacao,
     String? status,
     int? totalItems,
+    DateTime? dtInicioConf,
+    String? usuarioConf,
+    DateTime? dtUltSinc,
     List<ItDocFisicoModel>? itensDoc,
   }) {
     return DoctoFisicoModel(
@@ -164,6 +173,9 @@ class DoctoFisicoModel {
       status: status ?? this.status,
       totalItems: totalItems ?? this.totalItems,
       itensDoc: itensDoc ?? this.itensDoc,
+      dtInicioConf: dtInicioConf ?? this.dtInicioConf,
+      usuarioConf: usuarioConf ?? this.usuarioConf,
+      dtUltSinc: dtUltSinc ?? this.dtInicioConf,
     );
   }
 

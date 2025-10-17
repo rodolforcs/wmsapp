@@ -1,13 +1,16 @@
+// lib/ui/features/estoque/recebimento/conferencia_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/it_doc_fisico_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/recebimento_view_model.dart';
-import 'package:wmsapp/ui/features/estoque/recebimento/widgets/item_conferencia_card.dart';
-
-// ============================================================================
-// CONFERENCIA VIEW - Tela de conferência de itens do documento
-// ============================================================================
+import 'package:wmsapp/ui/features/estoque/recebimento/widgets/documento_info_card.dart';
+import 'package:wmsapp/ui/features/estoque/recebimento/widgets/conferencia_progress_indicator.dart';
+import 'package:wmsapp/ui/features/estoque/recebimento/widgets/itens_filter_toggle.dart';
+import 'package:wmsapp/ui/features/estoque/recebimento/widgets/itens_conferencia_list.dart';
+import 'package:wmsapp/ui/features/estoque/recebimento/widgets/divergencia_alert_banner.dart';
+import 'package:wmsapp/ui/features/estoque/recebimento/widgets/conferencia_action_bar.dart';
+import 'package:wmsapp/shared/widgets/empty_state_widget.dart';
 
 class ConferenciaView extends StatefulWidget {
   final bool isTablet;
@@ -30,514 +33,126 @@ class _ConferenciaViewState extends State<ConferenciaView> {
     final documento = viewModel.documentoSelecionado;
 
     if (documento == null) {
-      return _buildEmpty();
+      return _buildDocumentoNaoSelecionado();
     }
 
-    return _buildScaffold(context, viewModel, documento);
+    return _buildConferenciaScreen(context, viewModel, documento);
   }
 
-  Widget _buildScaffold(
+  Widget _buildConferenciaScreen(
     BuildContext context,
     RecebimentoViewModel viewModel,
     DoctoFisicoModel documento,
   ) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: widget.isTablet
-          ? null
-          : AppBar(
-              title: Text('NF ${documento.nroDocto}'),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  viewModel.voltarParaLista();
-                },
-              ),
-            ),
-      body: Column(
-        children: [
-          _buildHeader(context, documento),
-          Expanded(
-            child: _buildContent(context, viewModel, documento),
-          ),
-          _buildFooter(context, viewModel, documento),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================================================
-  Widget _buildHeader(BuildContext context, documento) {
+    final itensExibidos = _getItensFiltrados(documento);
     final totalItens = documento.itensDoc.length;
     final itensNaoConferidos = documento.itensDoc
         .where((item) => !item.foiConferido)
         .length;
 
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'NF ${documento.nroDocto} - Série ${documento.serieDocto}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        documento.nomeAbreviado,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildStatusBadge(documento.status),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(child: _buildProgressBar(documento)),
-                const SizedBox(
-                  width: 12,
-                ),
-                Material(
-                  color: _mostrarApenasNaoConferidos
-                      ? Colors.blue.shade50
-                      : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _mostrarApenasNaoConferidos =
-                            !_mostrarApenasNaoConferidos;
-                      });
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _mostrarApenasNaoConferidos
-                              ? Icons.filter_list
-                              : Icons.list,
-                          size: 20,
-                          color: _mostrarApenasNaoConferidos
-                              ? Colors.blue.shade700
-                              : Colors.grey.shade700,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _mostrarApenasNaoConferidos
-                              ? 'Pendentes ($itensNaoConferidos))'
-                              : 'Todos ($totalItens)',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _mostrarApenasNaoConferidos
-                                ? Colors.blue.shade700
-                                : Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            /*
-            // Progresso da conferência
-            _buildProgressBar(documento),
-            */
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(String status) {
-    Color backgroundColor;
-    Color textColor;
-
-    switch (status.toLowerCase()) {
-      case 'pendente':
-        backgroundColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade700;
-        break;
-      case 'em conferência':
-        backgroundColor = Colors.blue.shade50;
-        textColor = Colors.blue.shade700;
-        break;
-      default:
-        backgroundColor = Colors.grey.shade50;
-        textColor = Colors.grey.shade700;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgressBar(documento) {
-    final total = documento.itensDoc.length;
-    final conferidos = documento.quantidadeItensConferidos;
-    final porcentagem = total > 0 ? (conferidos / total) * 100 : 0.0;
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Progresso da Conferência',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-              ),
-            ),
-            Text(
-              '$conferidos de $total itens',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: porcentagem / 100,
-            minHeight: 8,
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(
-              porcentagem == 100 ? Colors.green : Colors.blue,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ==========================================================================
-  Widget _buildContent(
-    BuildContext context,
-    RecebimentoViewModel viewModel,
-    documento,
-  ) {
-    // Estado de loading ao buscar itens
-    if (viewModel.isLoadingItens) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Carregando itens do documento...'),
-          ],
-        ),
-      );
-    }
-
-    // Lista vazia
-    if (documento.itensDoc.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 64,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Nenhum item encontrado neste documento',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // CRIA A LISTA FILTRADA AQUI
-    final List<ItDocFisicoModel> itensExibidos = _mostrarApenasNaoConferidos
-        ? documento.itensDoc.where((item) => !item.foiConferido).toList()
-        : documento.itensDoc.toList();
-
-    /*
-    // Contagem para o header
-    final itensNaoConferidos = documento.itensDoc
-        .where((item) => !item.foiConferido)
-        .length;
-    */
-    // ... (código da lista vazia, agora usando a lista filtrada)
-    if (itensExibidos.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.filter_list_off, // Ícone mais apropriado
-              size: 64,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Nenhum item pendente encontrado', // Mensagem mais apropriada
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Lista de itens
-    return FocusTraversalGroup(
-      // Grupo de tab do widget ListView.builder
-      policy: OrderedTraversalPolicy(), // ✅ Respeita a ordem dos widgets
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        //itemCount: documento.itensDoc.length,
-        itemCount: itensExibidos.length,
-        itemBuilder: (context, index) {
-          //final item = documento.itensDoc[index];
-          final item = itensExibidos[index];
-
-          return ItemConferenciaCard(
-            key: ValueKey(item.nrSequencia),
-            item: item,
-            onQuantidadeChanged: (qtd) {
-              viewModel.atualizarQuantidadeItem(item.nrSequencia, qtd);
-            },
-            onRateioQuantidadeChanged: (chave, qtd) {
-              viewModel.atualizarQuantidadeRateio(
-                item.nrSequencia,
-                chave,
-                qtd,
-              );
-            },
-            onAdicionarRateio: (rateio) {
-              viewModel.adicionarRateio(item.nrSequencia, rateio);
-            },
-            onRemoverRateio: (chave) {
-              viewModel.removerRateio(item.nrSequencia, chave);
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  // ==========================================================================
-  Widget _buildFooter(
-    BuildContext context,
-    RecebimentoViewModel viewModel,
-    documento,
-  ) {
-    final temDivergencias = documento.temDivergencias;
-    final todosConferidos = documento.todosItensConferidos;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Alerta de divergências
-            if (temDivergencias)
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade300),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.orange.shade700,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Divergências encontradas',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange.shade900,
-                            ),
-                          ),
-                          Text(
-                            '${documento.itensComDivergencia.length} item(ns) com divergência',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.orange.shade800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Botões de ação
-            Row(
-              children: [
-                // Botão Voltar (apenas mobile)
-                if (!widget.isTablet)
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        viewModel.voltarParaLista();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text('Voltar'),
-                    ),
-                  ),
-
-                if (!widget.isTablet) const SizedBox(width: 12),
-
-                // Botão Finalizar
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: !todosConferidos
-                        ? null
-                        : () async {
-                            final success = temDivergencias
-                                ? await _confirmarFinalizacaoComDivergencia(
-                                    context,
-                                    viewModel,
-                                    documento,
-                                  )
-                                : await viewModel.finalizarConferencia();
-
-                            if (success && context.mounted) {
-                              if (!widget.isTablet) {
-                                Navigator.of(context).pop();
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: temDivergencias
-                          ? Colors.orange
-                          : Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: Text(
-                      temDivergencias
-                          ? 'Finalizar com Divergência'
-                          : 'Finalizar Conferência',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // Dica
-            if (!todosConferidos)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Confira todos os itens para finalizar',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==========================================================================
-  Widget _buildEmpty() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: _buildAppBar(documento, viewModel),
+      body: Column(
         children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            size: 64,
-            color: Colors.grey,
+          DocumentoInfoCard(documento: documento),
+          ConferenciaProgressIndicator(documento: documento),
+          ItensFilterToggle(
+            mostrarApenasNaoConferidos: _mostrarApenasNaoConferidos,
+            totalItens: totalItens,
+            itensNaoConferidos: itensNaoConferidos,
+            onToggle: _toggleFiltro,
           ),
-          SizedBox(height: 16),
-          Text(
-            'Selecione um documento para conferir',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
+          DivergenciaAlertBanner(documento: documento),
+          Expanded(
+            child: ItensConferenciaList(
+              itens: itensExibidos,
+              isLoading: viewModel.isLoadingItens,
+              showEmptyForFilter:
+                  _mostrarApenasNaoConferidos &&
+                  itensExibidos.isEmpty &&
+                  totalItens > 0,
+              onQuantidadeChanged: (sequencia, qtd) =>
+                  viewModel.atualizarQuantidadeItem(sequencia, qtd),
+              onRateioQuantidadeChanged: (sequencia, chave, qtd) =>
+                  viewModel.atualizarQuantidadeRateio(sequencia, chave, qtd),
+              onAdicionarRateio: (sequencia, rateio) =>
+                  viewModel.adicionarRateio(sequencia, rateio),
+              onRemoverRateio: (sequencia, chave) =>
+                  viewModel.removerRateio(sequencia, chave),
             ),
+          ),
+          ConferenciaActionBar(
+            isTablet: widget.isTablet,
+            todosConferidos: documento.todosItensConferidos,
+            temDivergencias: documento.temDivergencias,
+            onVoltar: widget.isTablet
+                ? null
+                : () => viewModel.voltarParaLista(),
+            onFinalizar: () => _handleFinalizar(context, viewModel, documento),
           ),
         ],
       ),
     );
   }
 
-  // ==========================================================================
+  AppBar? _buildAppBar(
+    DoctoFisicoModel documento,
+    RecebimentoViewModel viewModel,
+  ) {
+    if (widget.isTablet) return null;
+
+    return AppBar(
+      title: Text('NF ${documento.nroDocto}'),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => viewModel.voltarParaLista(),
+      ),
+    );
+  }
+
+  Widget _buildDocumentoNaoSelecionado() {
+    return EmptyStateWidget(
+      icon: Icons.inventory_2_outlined,
+      title: 'Selecione um documento',
+      subtitle: 'Escolha um documento na lista para iniciar a conferência',
+      iconColor: Colors.grey[400],
+    );
+  }
+
+  List<ItDocFisicoModel> _getItensFiltrados(DoctoFisicoModel documento) {
+    if (_mostrarApenasNaoConferidos) {
+      return documento.itensDoc.where((item) => !item.foiConferido).toList();
+    }
+    return documento.itensDoc.toList();
+  }
+
+  void _toggleFiltro() {
+    setState(() {
+      _mostrarApenasNaoConferidos = !_mostrarApenasNaoConferidos;
+    });
+  }
+
+  Future<void> _handleFinalizar(
+    BuildContext context,
+    RecebimentoViewModel viewModel,
+    DoctoFisicoModel documento,
+  ) async {
+    final temDivergencias = documento.temDivergencias;
+
+    final success = temDivergencias
+        ? await _confirmarFinalizacaoComDivergencia(
+            context,
+            viewModel,
+            documento,
+          )
+        : await viewModel.finalizarConferencia();
+
+    if (success && context.mounted && !widget.isTablet) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<bool> _confirmarFinalizacaoComDivergencia(
     BuildContext context,
     RecebimentoViewModel viewModel,
@@ -550,7 +165,10 @@ class _ConferenciaViewState extends State<ConferenciaView> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange.shade700,
+            ),
             const SizedBox(width: 12),
             const Text('Confirmar Divergências'),
           ],
@@ -565,43 +183,7 @@ class _ConferenciaViewState extends State<ConferenciaView> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              ...divergencias.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 16,
-                        color: Colors.orange,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.descrItem,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              item.mensagemDivergencia,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              ...divergencias.map((item) => _buildDivergenciaItem(item)),
               const SizedBox(height: 16),
               const Text(
                 'Deseja finalizar a conferência registrando estas divergências?',
@@ -631,5 +213,43 @@ class _ConferenciaViewState extends State<ConferenciaView> {
     }
 
     return false;
+  }
+
+  Widget _buildDivergenciaItem(ItDocFisicoModel item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            size: 16,
+            color: Colors.orange,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.descrItem,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  item.mensagemDivergencia,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

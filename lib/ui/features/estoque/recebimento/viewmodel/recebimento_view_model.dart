@@ -175,7 +175,8 @@ class RecebimentoViewModel extends BaseViewModel {
     try {
       // ✅ IMPORTANTE: NÃO usa runAsync aqui!
       // runAsync mudaria o isLoading, queremos usar apenas isLoadingItens
-      final result = await _repository.buscarDetalhesDocto(
+      //final result = await _repository.buscarDetalhesDocto(
+      final result = await _repository.iniciarConferencia(
         codEstabel: documento.codEstabel,
         codEmitente: documento.codEmitente,
         nroDocto: documento.nroDocto,
@@ -215,41 +216,6 @@ class RecebimentoViewModel extends BaseViewModel {
 
     // ✅ Notifica depois de carregar (ou dar erro)
     notifyListeners();
-
-    /*
-    final result = await runAsync(() async {
-      return await _repository.buscarDetalhesDocto(
-        codEstabel: documento.codEstabel,
-        codEmitente: documento.codEmitente,
-        nroDocto: documento.nroDocto,
-        serieDocto: documento.serieDocto,
-        username: user.username,
-        password: user.password,
-      );
-    });
-
-    if (result != null) {
-      // Atualiza o documento na lista com os itens carregados
-      final index = _documentos.indexWhere(
-        (d) => d.chaveDocumento == documento.chaveDocumento,
-      );
-
-      if (index >= 0) {
-        _documentos[index] = result;
-      }
-
-      _documentoSelecionado = result;
-
-      if (kDebugMode) {
-        debugPrint(
-          '[RecebimentoVM] Detalhes carregados: ${result.itensDoc.length} itens',
-        );
-      }
-    }
-
-    // ✅ Só notifica depois de carregar os itens
-    notifyListeners();
-    */
   }
 
   void voltarParaLista() {

@@ -86,7 +86,7 @@ class DoctoFisicoCard extends StatelessWidget {
                     ),
                   ),
                   // Badge de status
-                  _buildStatusBadge(),
+                  _buildStatusBadge(documento.status),
                 ],
               ),
 
@@ -171,12 +171,14 @@ class DoctoFisicoCard extends StatelessWidget {
   // STATUS BADGE
   // ==========================================================================
 
-  Widget _buildStatusBadge() {
+  Widget _buildStatusBadge(String status) {
     Color backgroundColor;
     Color textColor;
     String text;
 
-    switch (documento.status.toLowerCase()) {
+    print('documento.status $status');
+
+    switch (status.toLowerCase()) {
       case 'pendente':
         backgroundColor = Colors.orange.shade50;
         textColor = Colors.orange.shade700;
@@ -185,7 +187,7 @@ class DoctoFisicoCard extends StatelessWidget {
       case 'em conferência':
         backgroundColor = Colors.blue.shade50;
         textColor = Colors.blue.shade700;
-        text = 'Em andamento';
+        text = 'Em conferência';
         break;
       case 'conferido':
         backgroundColor = Colors.green.shade50;

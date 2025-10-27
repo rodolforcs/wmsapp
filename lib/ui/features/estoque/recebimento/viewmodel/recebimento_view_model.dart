@@ -358,6 +358,14 @@ class RecebimentoViewModel extends BaseViewModel {
     }
   }
 
+  /// 🔧 MÉTODO PÚBLICO: Dispara sincronização manual (para testes ou botão na UI)
+  Future<void> sincronizarAgora() async {
+    if (kDebugMode) {
+      debugPrint('[RecebimentoVM] 🔄 Sincronização MANUAL disparada');
+    }
+    await _sincronizarItensAlterados();
+  }
+
   /// Sincroniza itens alterados com o backend
   Future<void> _sincronizarItensAlterados() async {
     if (_documentoSelecionado == null) return;

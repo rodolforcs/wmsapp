@@ -416,13 +416,33 @@ class RecebimentoViewModel extends BaseViewModel {
     // ✅ Marca que está sincronizando
     _isSyncing = true;
 
+    if (kDebugMode) {
+      debugPrint('[RecebimentoVM] 🔒 Flag _isSyncing definida como TRUE');
+    }
+
     try {
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] 🌐 Iniciando chamada ao backend...');
+      }
+
       final response = await _syncService.sincronizarDocumento(
         documento: _documentoSelecionado!,
         itensAlterados: itensAlterados,
         username: user.username,
         password: user.password,
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          if (kDebugMode) {
+            debugPrint('[RecebimentoVM] ⏱️ Timeout na sincronização após 30s');
+          }
+          throw Exception('Timeout: A sincronização demorou mais de 30 segundos');
+        },
       );
+
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] 📥 Resposta recebida do backend');
+      }
 
       // ✅ CORREÇÃO: Converte corretamente o map de versões
       if (response['versoes'] != null) {
@@ -456,7 +476,7 @@ class RecebimentoViewModel extends BaseViewModel {
       // ✅ SEMPRE reseta flag, mesmo se der erro
       _isSyncing = false;
       if (kDebugMode) {
-        debugPrint('[RecebimentoVM] 🔓 Sincronização liberada');
+        debugPrint('[RecebimentoVM] 🔓 Flag _isSyncing definida como FALSE');
       }
     }
   }

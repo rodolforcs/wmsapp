@@ -285,6 +285,106 @@ class RecebimentoRepository {
   }
 
   // ==========================================================================
+  // SINCRONIZAR ITENS DA CONFERÊNCIA
+  // ==========================================================================
+
+  /// Sincroniza itens alterados da conferência com o backend
+  ///
+  /// Este método envia apenas os itens que foram modificados (foiAlterado = true)
+  /// e recebe do backend as versões atualizadas.
+  ///
+  /// Endpoint esperado: rep/v1/api_post_recebimento_sync/
+  ///
+  /// Payload:
+  /// ```json
+  /// {
+  ///   "tt-doc-fisico": [{
+  ///     "cod-estabel": "...",
+  ///     "cod-emitente": 123,
+  ///     "nro-docto": "...",
+  ///     "serie-docto": "..."
+  ///   }],
+  ///   "tt-it-doc-fisico": [
+  ///     {
+  ///       "sequencia": 1,
+  ///       "it-codigo": "...",
+  ///       "qtde-conferida": 100.0,
+  ///       "versao": 1,
+  ///       "tt-rat-lote": [...]
+  ///     }
+  ///   ]
+  /// }
+  /// ```
+  ///
+  /// Resposta esperada:
+  /// - Mesmo formato do `iniciarConferencia`
+  /// - Itens com versões incrementadas
+  /// - Campos data-ult-alt e usuario-ult-alt atualizados
+  Future<DoctoFisicoModel> sincronizarItensConferencia({
+    required String codEstabel,
+    required int codEmitente,
+    required String nroDocto,
+    required String serieDocto,
+    required List<ItDocFisicoModel> itensAlterados,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final userForAuth = '$username@${dotenv.env['DOMAIN']}';
+
+      final body = {
+        "tt-doc-fisico": [
+          {
+            "cod-estabel": codEstabel,
+            "cod-emitente": codEmitente,
+            "nro-docto": nroDocto,
+            "serie-docto": serieDocto,
+          },
+        ],
+        "tt-it-doc-fisico": itensAlterados.map((item) => item.toJsonSync()).toList(),
+      };
+
+      print('[RecebimentoRepository] Sincronizando ${itensAlterados.length} itens...');
+      print("JSON enviado: ${jsonEncode(body)}");
+
+      final response = await _apiService.post(
+        'rep/v1/api_post_recebimento_sync/',
+        body: body,
+        username: userForAuth,
+        password: password,
+      );
+
+      // Navega até o documento dentro da estrutura do dataset
+      final items = response['items'] as List;
+      if (items.isEmpty) {
+        throw Exception('Documento não encontrado na resposta');
+      }
+
+      final dataset = items[0]['dsDocto'];
+      final doctos = dataset['tt-doc-fisico'] as List;
+
+      if (doctos.isEmpty) {
+        throw Exception('Documento não encontrado na resposta');
+      }
+
+      final docJson = Map<String, dynamic>.from(doctos[0]);
+
+      // Extrai os itens e renomeia para o campo que o model espera
+      final itensJson = docJson['tt-it-doc-fisico'] as List? ?? [];
+      docJson['itensDoc'] = itensJson;
+      docJson.remove('tt-it-doc-fisico');
+
+      print('[RecebimentoRepository] Sincronização concluída');
+      print('[RecebimentoRepository] ${itensJson.length} itens atualizados');
+
+      return DoctoFisicoModel.fromJson(docJson);
+    } catch (e) {
+      print('[RecebimentoRepository] ERRO na sincronização: $e');
+      throw Exception('Erro ao sincronizar itens: ${e.toString()}');
+    }
+  }
+
+  // ==========================================================================
   // REGISTRAR DIVERGÊNCIA
   // ==========================================================================
 

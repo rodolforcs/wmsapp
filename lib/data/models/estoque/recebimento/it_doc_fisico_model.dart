@@ -33,6 +33,9 @@ class ItDocFisicoModel {
 
   String usuarioUltAlt;
 
+  /// Flag que indica se o item foi alterado e precisa ser sincronizado
+  bool foiAlterado;
+
   /// Referência ao cadastro do item (para acessar descrição, etc)
   /// Será preenchido ao juntar com os dados de ItemModel
   ItemModel? itemCadastro;
@@ -54,6 +57,7 @@ class ItDocFisicoModel {
     required this.versao,
     this.dataUltAlt,
     this.usuarioUltAlt = '',
+    this.foiAlterado = false,
   });
 
   // ==========================================================================
@@ -133,7 +137,19 @@ class ItDocFisicoModel {
       'cod-item': codItem,
       'qtde-item': qtdeItem,
       'qtde-conferida': qtdeConferida,
+      'versao': versao,
       'rateios': rateios?.map((rat) => rat.toJson()).toList(),
+    };
+  }
+
+  /// Converte apenas os campos necessários para sincronização
+  Map<String, dynamic> toJsonSync() {
+    return {
+      'sequencia': nrSequencia,
+      'it-codigo': codItem,
+      'qtde-conferida': qtdeConferida,
+      'versao': versao,
+      'tt-rat-lote': rateios?.map((rat) => rat.toJson()).toList() ?? [],
     };
   }
 
@@ -153,6 +169,9 @@ class ItDocFisicoModel {
     String? numeroOrdem,
     bool? foiConferido,
     int? versao,
+    DateTime? dataUltAlt,
+    String? usuarioUltAlt,
+    bool? foiAlterado,
   }) {
     return ItDocFisicoModel(
       nrSequencia: nrSequencia ?? this.nrSequencia,
@@ -165,6 +184,9 @@ class ItDocFisicoModel {
       numeroOrdem: numeroOrdem ?? this.numeroOrdem,
       foiConferido: foiConferido ?? this.foiConferido,
       versao: versao ?? this.versao,
+      dataUltAlt: dataUltAlt ?? this.dataUltAlt,
+      usuarioUltAlt: usuarioUltAlt ?? this.usuarioUltAlt,
+      foiAlterado: foiAlterado ?? this.foiAlterado,
     );
   }
 

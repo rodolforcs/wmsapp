@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wmsapp/core/viewmodel/session_view_model.dart';
 import 'package:wmsapp/data/repositories/estoque/recebimento/recebimento_repository.dart';
+import 'package:wmsapp/data/services/conferencia_sync_service.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/recebimento_view_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/conferencia_view.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/lista_documentos_view.dart';
@@ -25,6 +26,7 @@ class RecebimentoScreen extends StatelessWidget {
       create: (context) => RecebimentoViewModel(
         repository: context.read<RecebimentoRepository>(),
         session: context.read<SessionViewModel>(),
+        syncService: context.read<ConferenciaSyncService>(),
       ),
       child: const _RecebimentoScreenContent(),
     );

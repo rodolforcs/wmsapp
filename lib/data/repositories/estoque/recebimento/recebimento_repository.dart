@@ -276,6 +276,7 @@ class RecebimentoRepository {
       print('[RecebimentoRepository] Conferência iniciada com sucesso');
       print('[RecebimentoRepository] Status: ${docJson['status-atual']}');
       print('[RecebimentoRepository] Itens carregados: ${itensJson.length}');
+      print(response);
 
       return DoctoFisicoModel.fromJson(docJson);
     } catch (e) {

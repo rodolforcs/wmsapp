@@ -6,6 +6,7 @@ import 'package:wmsapp/data/models/app_permissions_model.dart';
 import 'package:wmsapp/data/repositories/auth_repository.dart';
 import 'package:wmsapp/data/repositories/estoque/recebimento/recebimento_repository.dart';
 import 'package:wmsapp/data/repositories/menu_repository.dart';
+import 'package:wmsapp/data/services/conferencia_sync_service.dart';
 import 'package:wmsapp/data/services/http_api_service.dart';
 import 'package:wmsapp/data/services/i_api_service.dart';
 import 'package:wmsapp/ui/features/login/viewmodel/login_view_model.dart';
@@ -26,6 +27,12 @@ Future<void> main() async {
           create: (_) => HttpApiService(),
         ),
 
+        // ✅ ADICIONAR: Service de sincronização de conferência
+        ProxyProvider<IApiService, ConferenciaSyncService>(
+          update: (context, apiService, _) => ConferenciaSyncService(
+            apiService,
+          ),
+        ),
         // ====================================================================
         // CAMADA DE REPOSITORIES
         // ====================================================================

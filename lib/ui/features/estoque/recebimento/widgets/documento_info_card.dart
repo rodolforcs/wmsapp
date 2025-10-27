@@ -1,6 +1,7 @@
 // lib/ui/features/estoque/recebimento/widgets/documento_info_card.dart
 import 'package:flutter/material.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
+import 'package:wmsapp/shared/enums/status_documento.dart';
 import 'package:wmsapp/shared/widgets/status_badge.dart';
 
 /// Widget que exibe informações do documento fiscal
@@ -48,13 +49,17 @@ class DocumentoInfoCard extends StatelessWidget {
                 ],
               ),
             ),
-            _buildStatusBadge(documento.status),
+            StatusBadge(
+              status: StatusDocumento.fromString(documento.status),
+            ),
+            //_buildStatusBadge(documento.status),
           ],
         ),
       ),
     );
   }
 
+  /*
   Widget _buildStatusBadge(String status) {
     switch (status.toLowerCase()) {
       case 'pendente':
@@ -68,4 +73,5 @@ class DocumentoInfoCard extends StatelessWidget {
         return StatusBadge.neutral(status);
     }
   }
+  */
 }

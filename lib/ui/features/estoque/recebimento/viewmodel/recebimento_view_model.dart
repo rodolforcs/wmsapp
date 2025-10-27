@@ -33,7 +33,8 @@ class RecebimentoViewModel extends BaseViewModel {
   String _searchTerm = '';
   bool _isInitialized = false;
   bool _isLoadingItens = false;
-  bool _isSyncing = false; // ✅ NOVO: Previne syncs paralelos
+  bool _isSyncing = false; // ✅ Previne syncs paralelos
+  bool _isReloading = false; // ✅ NOVO: Previne sync durante recarregamento
 
   //Documentos
 
@@ -371,11 +372,21 @@ class RecebimentoViewModel extends BaseViewModel {
   Future<void> _sincronizarItensAlterados() async {
     if (_documentoSelecionado == null) return;
 
-    // ✅ PROTEÇÃO: Se já está sincronizando, ignora nova chamada
+    // ✅ PROTEÇÃO 1: Se já está sincronizando, ignora nova chamada
     if (_isSyncing) {
       if (kDebugMode) {
         debugPrint(
           '[RecebimentoVM] ⏸️ Sincronização já em andamento, aguardando...',
+        );
+      }
+      return;
+    }
+
+    // ✅ PROTEÇÃO 2: Se está recarregando documento, ignora sync
+    if (_isReloading) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] 🔄 Documento sendo recarregado, sync cancelado',
         );
       }
       return;
@@ -476,6 +487,9 @@ class RecebimentoViewModel extends BaseViewModel {
     final user = _session.currentUser;
     if (user == null) return;
 
+    // ✅ Marca que está recarregando (previne syncs durante reload)
+    _isReloading = true;
+
     try {
       if (kDebugMode) {
         debugPrint('[RecebimentoVM] 🔄 Recarregando documento do servidor...');
@@ -502,12 +516,13 @@ class RecebimentoViewModel extends BaseViewModel {
       if (kDebugMode) {
         debugPrint('[RecebimentoVM] ❌ Erro ao recarregar: $e');
       }
+    } finally {
+      // ✅ SEMPRE reseta flag, mesmo se der erro
+      _isReloading = false;
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] 🔓 Recarregamento concluído, sync liberado');
+      }
     }
-  }
-
-  /// Força sincronização manual (para botão na UI, se quiser)
-  Future<void> sincronizarAgora() async {
-    await _sincronizarItensAlterados();
   }
 
   // ==========================================================================

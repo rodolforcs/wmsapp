@@ -146,6 +146,18 @@ class ItDocFisicoModel {
     };
   }
 
+  /// Converte para JSON específico da sincronização
+  /// (usado pelo endpoint api_post_recebimento_sync)
+  Map<String, dynamic> toJsonSync() {
+    return {
+      'sequencia': nrSequencia,
+      'it-codigo': codItem,
+      'qtde-conferida': qtdeConferida,
+      'versao': versao,
+      'tt-rat-lote': rateios?.map((rat) => rat.toJson()).toList() ?? [],
+    };
+  }
+
   // ==========================================================================
   // MÉTODO: Copy With
   // ==========================================================================

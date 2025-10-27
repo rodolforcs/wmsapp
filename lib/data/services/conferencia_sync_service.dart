@@ -77,6 +77,17 @@ class ConferenciaSyncService {
       return result;
     } catch (e) {
       print('❌ Erro no sync: $e');
+
+      // ✅ CORREÇÃO: Detecta erro de versão divergente e trata como conflito
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('versão') &&
+          (errorMsg.contains('divergente') || errorMsg.contains('atualização'))) {
+        print('⚠️ Erro de versão detectado - tratando como conflito');
+        throw ConflictException(
+          'Dados foram alterados no servidor. Recarregando documento...',
+        );
+      }
+
       rethrow; // Propaga erro para o ViewModel tratar
     }
   }

@@ -33,6 +33,7 @@ class RecebimentoViewModel extends BaseViewModel {
   String _searchTerm = '';
   bool _isInitialized = false;
   bool _isLoadingItens = false;
+  bool _isSyncing = false; // ✅ NOVO: Previne syncs paralelos
 
   //Documentos
 
@@ -370,6 +371,16 @@ class RecebimentoViewModel extends BaseViewModel {
   Future<void> _sincronizarItensAlterados() async {
     if (_documentoSelecionado == null) return;
 
+    // ✅ PROTEÇÃO: Se já está sincronizando, ignora nova chamada
+    if (_isSyncing) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] ⏸️ Sincronização já em andamento, aguardando...',
+        );
+      }
+      return;
+    }
+
     final user = _session.currentUser;
     if (user == null) return;
 
@@ -390,6 +401,9 @@ class RecebimentoViewModel extends BaseViewModel {
         '[RecebimentoVM] 📤 Sincronizando ${itensAlterados.length} itens...',
       );
     }
+
+    // ✅ Marca que está sincronizando
+    _isSyncing = true;
 
     try {
       final response = await _syncService.sincronizarDocumento(
@@ -427,6 +441,12 @@ class RecebimentoViewModel extends BaseViewModel {
 
       // Não mostra erro ao usuário em sync automático
       // Apenas em finalização manual
+    } finally {
+      // ✅ SEMPRE reseta flag, mesmo se der erro
+      _isSyncing = false;
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] 🔓 Sincronização liberada');
+      }
     }
   }
 

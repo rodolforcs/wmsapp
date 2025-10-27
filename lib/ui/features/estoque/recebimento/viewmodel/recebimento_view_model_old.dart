@@ -5,21 +5,16 @@ import 'package:wmsapp/core/viewmodel/session_view_model.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 import 'package:wmsapp/data/repositories/estoque/recebimento/recebimento_repository.dart';
-import 'package:wmsapp/data/services/conferencia_sync_service.dart'; // ✅ ADICIONAR
 
 class RecebimentoViewModel extends BaseViewModel {
   final RecebimentoRepository _repository;
   final SessionViewModel _session;
-  final ConferenciaSyncService _syncService; // ✅ ADICIONAR
 
   RecebimentoViewModel({
     required RecebimentoRepository repository,
     required SessionViewModel session,
-    required ConferenciaSyncService syncService, // ✅ ADICIONAR
   }) : _repository = repository,
-       _session = session,
-       _syncService = syncService {
-    // ✅ ADICIONAR
+       _session = session {
     if (kDebugMode) {
       debugPrint(
         '[RecebimentoVM] 🏗️ ViewModel CRIADO (ID: ${identityHashCode(this)}) - Buscando documentos...',
@@ -31,7 +26,7 @@ class RecebimentoViewModel extends BaseViewModel {
   List<DoctoFisicoModel> _documentos = [];
   DoctoFisicoModel? _documentoSelecionado;
   String _searchTerm = '';
-  bool _isInitialized = false;
+  bool _isInitialized = false; // ✅ NOVO: Flag para controlar inicialização
   bool _isLoadingItens = false;
 
   //Documentos
@@ -53,9 +48,10 @@ class RecebimentoViewModel extends BaseViewModel {
 
   bool get hasDocumentos => _documentos.isNotEmpty;
   bool get semResultados => !isLoading && _documentos.isEmpty;
-  bool get isLoadingItens => _isLoadingItens;
+  bool get isLoadingItens => _isLoadingItens; // ✅ ADICIONE AQUI
 
   Future<void> fetchDocumentosPendentes() async {
+    // ✅ PROTEÇÃO: Não busca se já está inicializado e não é refresh
     if (_isInitialized && !isLoading) {
       if (kDebugMode) {
         debugPrint(
@@ -104,7 +100,7 @@ class RecebimentoViewModel extends BaseViewModel {
 
     if (result != null) {
       _documentos = result;
-      _isInitialized = true;
+      _isInitialized = true; // ✅ Marca como inicializado
 
       if (_documentoSelecionado != null) {
         _documentoSelecionado = _documentos.firstWhere(
@@ -141,6 +137,7 @@ class RecebimentoViewModel extends BaseViewModel {
   }
 
   Future<void> selecionarDocumento(DoctoFisicoModel documento) async {
+    // ✅ OTIMIZAÇÃO: Não notifica se já está selecionado
     if (_documentoSelecionado?.chaveDocumento == documento.chaveDocumento) {
       if (kDebugMode) {
         debugPrint(
@@ -152,6 +149,7 @@ class RecebimentoViewModel extends BaseViewModel {
 
     _documentoSelecionado = documento;
 
+    // ✅ MUDANÇA: Só notifica se já tem itens (não vai buscar)
     if (documento.itensDoc.isNotEmpty) {
       if (kDebugMode) {
         debugPrint(
@@ -163,6 +161,7 @@ class RecebimentoViewModel extends BaseViewModel {
       return;
     }
 
+    /// Busca detalhes complementos do documento
     if (kDebugMode) {
       debugPrint(
         '[RecebimentoVM] Buscando detalhes do documento: ${documento.nroDocto}',
@@ -171,10 +170,14 @@ class RecebimentoViewModel extends BaseViewModel {
     final user = _session.currentUser;
     if (user == null) return;
 
+    // ✅ NOVO: Usa loading separado para itens (NÃO usa runAsync!)
     _isLoadingItens = true;
     notifyListeners();
 
     try {
+      // ✅ IMPORTANTE: NÃO usa runAsync aqui!
+      // runAsync mudaria o isLoading, queremos usar apenas isLoadingItens
+      //final result = await _repository.buscarDetalhesDocto(
       final result = await _repository.iniciarConferencia(
         codEstabel: documento.codEstabel,
         codEmitente: documento.codEmitente,
@@ -185,6 +188,7 @@ class RecebimentoViewModel extends BaseViewModel {
       );
 
       if (result != null) {
+        // Atualiza o documento na lista com os itens carregados
         final index = _documentos.indexWhere(
           (d) => d.chaveDocumento == documento.chaveDocumento,
         );
@@ -194,9 +198,6 @@ class RecebimentoViewModel extends BaseViewModel {
         }
 
         _documentoSelecionado = result;
-
-        // ✅ ADICIONAR: Inicia auto-sync após carregar documento
-        _iniciarAutoSync();
 
         if (kDebugMode) {
           debugPrint(
@@ -209,17 +210,17 @@ class RecebimentoViewModel extends BaseViewModel {
         debugPrint('[RecebimentoVM] Erro ao buscar detalhes: $e');
         debugPrint('[RecebimentoVM] Stack: $stack');
       }
+      // Você pode adicionar tratamento de erro aqui se quiser
     } finally {
+      // ✅ Sempre desliga o loading, mesmo se der erro
       _isLoadingItens = false;
     }
 
+    // ✅ Notifica depois de carregar (ou dar erro)
     notifyListeners();
   }
 
   void voltarParaLista() {
-    // ✅ ADICIONAR: Para auto-sync ao sair do documento
-    _pararAutoSync();
-
     _documentoSelecionado = null;
     notifyListeners();
   }
@@ -231,15 +232,17 @@ class RecebimentoViewModel extends BaseViewModel {
       (item) => item.nrSequencia == nrSequencia,
     );
 
-    // ✅ IMPORTANTE: Marca como alterado localmente
+    // Atualiza APENAS a quantidade conferida digitada pelo usuário
     item.qtdeConferida = quantidade;
+
+    // 2. 🔥 LÓGICA ADICIONADA: Recalcula o status de conferência do item
+    //    (Assumindo que seu modelo ItDocFisicoModel tem a propriedade 'quantidade' original)
     item.foiConferido = item.qtdeConferida >= item.qtdeItem;
-    item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
 
     if (kDebugMode) {
       debugPrint(
         '[RecebimentoVM] Quantidade atualizada: Item ${item.codItem}, '
-        'Qtde: $quantidade (marcado para sync)',
+        'Qtde: $quantidade',
       );
     }
 
@@ -265,17 +268,16 @@ class RecebimentoViewModel extends BaseViewModel {
 
     rateio.qtdeLote = quantidade;
 
+    // AQUI SIM recalcula, pois mudou um rateio
     item.qtdeConferida = item.rateios!.fold<double>(
       0.0,
       (sum, rat) => sum + rat.qtdeLote,
     );
 
-    item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
-
     if (kDebugMode) {
       debugPrint(
         '[RecebimentoVM] Rateio atualizado: ${rateio.chaveRateio}, '
-        'Nova soma: ${item.qtdeConferida} (marcado para sync)',
+        'Nova soma: ${item.qtdeConferida}',
       );
     }
 
@@ -292,19 +294,16 @@ class RecebimentoViewModel extends BaseViewModel {
     item.rateios ??= [];
     item.rateios!.add(rateio);
 
+    // Recalcula quantidade conferida
     item.qtdeConferida = item.rateios!.fold<double>(
       0.0,
       (sum, rat) => sum + rat.qtdeLote,
     );
 
-    item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
-
     notifyListeners();
 
     if (kDebugMode) {
-      debugPrint(
-        '[RecebimentoVM] Rateio adicionado: ${rateio.chaveRateio} (marcado para sync)',
-      );
+      debugPrint('[RecebimentoVM] Rateio adicionado: ${rateio.chaveRateio}');
     }
   }
 
@@ -319,178 +318,29 @@ class RecebimentoViewModel extends BaseViewModel {
 
     item.rateios!.removeWhere((rat) => rat.chaveRateio == chaveRateio);
 
+    // Recalcula quantidade conferida
     item.qtdeConferida = item.hasRateios
         ? item.rateios!.fold<double>(0.0, (sum, rat) => sum + rat.qtdeLote)
         : 0.0;
 
-    item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
-
     notifyListeners();
 
     if (kDebugMode) {
-      debugPrint(
-        '[RecebimentoVM] Rateio removido: $chaveRateio (marcado para sync)',
-      );
+      debugPrint('[RecebimentoVM] Rateio removido: $chaveRateio');
     }
-  }
-
-  // ==========================================================================
-  // 🔄 SINCRONIZAÇÃO (NOVO)
-  // ==========================================================================
-
-  /// Inicia auto-sync (chamado ao selecionar documento)
-  void _iniciarAutoSync() {
-    _syncService.iniciarAutoSync(
-      onSyncNeeded: () => _sincronizarItensAlterados(),
-    );
-
-    if (kDebugMode) {
-      debugPrint('[RecebimentoVM] 🔁 Auto-sync iniciado');
-    }
-  }
-
-  /// Para auto-sync (chamado ao sair do documento)
-  void _pararAutoSync() {
-    _syncService.pararAutoSync();
-
-    if (kDebugMode) {
-      debugPrint('[RecebimentoVM] ⏹️ Auto-sync parado');
-    }
-  }
-
-  /// Sincroniza itens alterados com o backend
-  Future<void> _sincronizarItensAlterados() async {
-    if (_documentoSelecionado == null) return;
-
-    final user = _session.currentUser;
-    if (user == null) return;
-
-    // Filtra apenas itens alterados
-    final itensAlterados = _documentoSelecionado!.itensDoc
-        .where((item) => item.alteradoLocal)
-        .toList();
-
-    if (itensAlterados.isEmpty) {
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] 📭 Nenhum item alterado para sincronizar');
-      }
-      return;
-    }
-
-    if (kDebugMode) {
-      debugPrint(
-        '[RecebimentoVM] 📤 Sincronizando ${itensAlterados.length} itens...',
-      );
-    }
-
-    try {
-      final response = await _syncService.sincronizarDocumento(
-        documento: _documentoSelecionado!,
-        itensAlterados: itensAlterados,
-        username: user.username,
-        password: user.password,
-      );
-
-      // ✅ CORREÇÃO: Converte corretamente o map de versões
-      if (response['versoes'] != null) {
-        final versoesMap = Map<int, int>.from(response['versoes'] as Map);
-        _atualizarVersoesLocais(versoesMap);
-      }
-
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] ✅ Sincronização concluída!');
-      }
-    } on ConflictException catch (e) {
-      // ⚠️ CONFLITO: Recarrega documento
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] ⚠️ Conflito detectado: ${e.message}');
-      }
-
-      await _recarregarDocumento();
-
-      MessengerService.showError(
-        'Documento atualizado por outro usuário. Dados recarregados.',
-      );
-    } catch (e) {
-      // ❌ Erro genérico
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] ❌ Erro ao sincronizar: $e');
-      }
-
-      // Não mostra erro ao usuário em sync automático
-      // Apenas em finalização manual
-    }
-  }
-
-  /// Atualiza versões locais após sync bem-sucedido
-  void _atualizarVersoesLocais(Map<int, int> versoes) {
-    if (_documentoSelecionado == null) return;
-
-    for (final item in _documentoSelecionado!.itensDoc) {
-      final novaVersao = versoes[item.nrSequencia];
-      if (novaVersao != null) {
-        item.versao = novaVersao;
-        item.alteradoLocal = false; // ✅ Já foi sincronizado
-      }
-    }
-
-    notifyListeners();
-
-    if (kDebugMode) {
-      debugPrint('[RecebimentoVM] 📋 Versões atualizadas localmente');
-    }
-  }
-
-  /// Recarrega documento do servidor (em caso de conflito)
-  Future<void> _recarregarDocumento() async {
-    if (_documentoSelecionado == null) return;
-
-    final user = _session.currentUser;
-    if (user == null) return;
-
-    try {
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] 🔄 Recarregando documento do servidor...');
-      }
-
-      final result = await _repository.iniciarConferencia(
-        codEstabel: _documentoSelecionado!.codEstabel,
-        codEmitente: _documentoSelecionado!.codEmitente,
-        nroDocto: _documentoSelecionado!.nroDocto,
-        serieDocto: _documentoSelecionado!.serieDocto,
-        username: user.username,
-        password: user.password,
-      );
-
-      if (result != null) {
-        _documentoSelecionado = result;
-        notifyListeners();
-
-        if (kDebugMode) {
-          debugPrint('[RecebimentoVM] ✅ Documento recarregado');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] ❌ Erro ao recarregar: $e');
-      }
-    }
-  }
-
-  /// Força sincronização manual (para botão na UI, se quiser)
-  Future<void> sincronizarAgora() async {
-    await _sincronizarItensAlterados();
   }
 
   // ==========================================================================
   // VALIDAÇÕES DE FINALIZAÇÃO
   // ==========================================================================
 
+  /// Verifica se pode finalizar (para habilitar/desabilitar botão na UI)
   bool get podeFinalizar {
     if (_documentoSelecionado == null) return false;
     return _documentoSelecionado!.podeFinalizar;
   }
 
+  /// Mensagem explicando por que não pode finalizar
   String get motivoNaoPodeFinalizar {
     if (_documentoSelecionado == null) return 'Nenhum documento selecionado';
 
@@ -523,6 +373,9 @@ class RecebimentoViewModel extends BaseViewModel {
       return false;
     }
 
+    // ========================================================================
+    // VALIDAÇÃO 1: Todos os itens devem ter quantidade conferida
+    // ========================================================================
     if (!documento.todosItensConferidos) {
       final itensNaoConferidos = documento.itensNaoConferidos;
       final mensagem =
@@ -537,6 +390,9 @@ class RecebimentoViewModel extends BaseViewModel {
       return false;
     }
 
+    // ========================================================================
+    // VALIDAÇÃO 2: Todos os rateios devem estar corretos
+    // ========================================================================
     if (!documento.todosRateiosCorretos) {
       final itensRateiosIncorretos = documento.itensComRateiosIncorretos;
 
@@ -554,7 +410,11 @@ class RecebimentoViewModel extends BaseViewModel {
       return false;
     }
 
+    // ========================================================================
+    // VALIDAÇÃO 3: Verifica se tem divergência de quantidade
+    // ========================================================================
     if (documento.temDivergenciasQuantidade) {
+      // Neste caso, retorna false para a UI mostrar dialog de confirmação
       if (kDebugMode) {
         debugPrint(
           '[RecebimentoVM] Documento possui divergências de quantidade',
@@ -563,6 +423,9 @@ class RecebimentoViewModel extends BaseViewModel {
       return false;
     }
 
+    // ========================================================================
+    // TUDO OK: Finaliza sem divergência
+    // ========================================================================
     return await _finalizarConferenciaComConfirmacao(comDivergencia: false);
   }
 
@@ -580,75 +443,37 @@ class RecebimentoViewModel extends BaseViewModel {
       );
     }
 
-    // ✅ ADICIONAR: Sincroniza tudo antes de finalizar
-    try {
-      await _sincronizarItensAlterados();
-
-      // Aguarda um pouco para garantir que sync completou
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Verifica se ainda tem itens alterados
-      final temItensAlterados = _documentoSelecionado!.itensDoc.any(
-        (item) => item.alteradoLocal,
-      );
-
-      if (temItensAlterados) {
-        MessengerService.showError(
-          'Ainda há alterações não sincronizadas. Aguarde um momento e tente novamente.',
-        );
-        return false;
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] Erro na sincronização final: $e');
-      }
-      MessengerService.showError(
-        'Erro ao sincronizar dados. Tente novamente.',
-      );
-      return false;
-    }
-
-    // ✅ MODIFICAR: Usa o service de sync para finalizar
-    try {
-      final sucesso = await _syncService.finalizarConferencia(
-        documento: _documentoSelecionado!,
+    final success = await runAsync(() async {
+      return await _repository.finalizarConferencia(
+        docto: _documentoSelecionado!,
         username: user.username,
         password: user.password,
         comDivergencia: comDivergencia,
       );
+    });
 
-      if (sucesso) {
-        // Para auto-sync
-        _pararAutoSync();
+    if (success == true) {
+      MessengerService.showSuccess(
+        comDivergencia
+            ? 'Conferência finalizada com divergência registrada!'
+            : 'Conferência finalizada com sucesso!',
+      );
 
-        MessengerService.showSuccess(
-          comDivergencia
-              ? 'Conferência finalizada com divergência registrada!'
-              : 'Conferência finalizada com sucesso!',
-        );
+      _documentos.removeWhere(
+        (doc) => doc.chaveDocumento == _documentoSelecionado!.chaveDocumento,
+      );
 
-        _documentos.removeWhere(
-          (doc) => doc.chaveDocumento == _documentoSelecionado!.chaveDocumento,
-        );
-
-        if (_documentos.isNotEmpty) {
-          _documentoSelecionado = _documentos.first;
-        } else {
-          _documentoSelecionado = null;
-        }
-
-        notifyListeners();
-        return true;
+      if (_documentos.isNotEmpty) {
+        _documentoSelecionado = _documentos.first;
       } else {
-        MessengerService.showError('Erro ao finalizar conferência');
-        return false;
+        _documentoSelecionado = null;
       }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[RecebimentoVM] Erro ao finalizar: $e');
-      }
+
+      notifyListeners();
+      return true;
+    } else {
       MessengerService.showError(
-        'Erro ao finalizar conferência: ${e.toString()}',
+        errorMessage ?? 'Erro ao finalizar conferência',
       );
       return false;
     }
@@ -660,8 +485,6 @@ class RecebimentoViewModel extends BaseViewModel {
 
   @override
   void dispose() {
-    _pararAutoSync(); // ✅ ADICIONAR - Para sync ao destruir ViewModel
-
     if (kDebugMode) {
       debugPrint('[RecebimentoVM] Disposed');
     }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
+import 'package:wmsapp/shared/enums/status_documento.dart';
+import 'package:wmsapp/shared/widgets/status_badge.dart';
 
 // ============================================================================
 // DOCTO FISICO CARD - Card de documento fiscal na lista
@@ -86,7 +88,10 @@ class DoctoFisicoCard extends StatelessWidget {
                     ),
                   ),
                   // Badge de status
-                  _buildStatusBadge(documento.status),
+                  StatusBadge(
+                    status: StatusDocumento.fromString(documento.status),
+                  ),
+                  //_buildStatusBadge(documento.status),
                 ],
               ),
 
@@ -162,56 +167,6 @@ class DoctoFisicoCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // ==========================================================================
-  // STATUS BADGE
-  // ==========================================================================
-
-  Widget _buildStatusBadge(String status) {
-    Color backgroundColor;
-    Color textColor;
-    String text;
-
-    print('documento.status $status');
-
-    switch (status.toLowerCase()) {
-      case 'pendente':
-        backgroundColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade700;
-        text = 'Pendente';
-        break;
-      case 'em conferência':
-        backgroundColor = Colors.blue.shade50;
-        textColor = Colors.blue.shade700;
-        text = 'Em conferência';
-        break;
-      case 'conferido':
-        backgroundColor = Colors.green.shade50;
-        textColor = Colors.green.shade700;
-        text = 'Conferido';
-        break;
-      default:
-        backgroundColor = Colors.grey.shade50;
-        textColor = Colors.grey.shade700;
-        text = documento.status;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: textColor,
         ),
       ),
     );

@@ -33,9 +33,6 @@ class ItDocFisicoModel {
 
   String usuarioUltAlt;
 
-  /// Flag que indica se o item foi alterado e precisa ser sincronizado
-  bool foiAlterado;
-
   /// Referência ao cadastro do item (para acessar descrição, etc)
   /// Será preenchido ao juntar com os dados de ItemModel
   ItemModel? itemCadastro;
@@ -43,6 +40,8 @@ class ItDocFisicoModel {
   final String numPedido;
   final String numeroOrdem;
   bool foiConferido;
+  bool alteradoLocal;
+  final String hashState;
 
   ItDocFisicoModel({
     required this.nrSequencia,
@@ -54,10 +53,11 @@ class ItDocFisicoModel {
     this.numPedido = '',
     this.numeroOrdem = '',
     this.foiConferido = false,
+    this.alteradoLocal = false,
+    this.hashState = '',
     required this.versao,
     this.dataUltAlt,
     this.usuarioUltAlt = '',
-    this.foiAlterado = false,
   });
 
   // ==========================================================================
@@ -123,6 +123,8 @@ class ItDocFisicoModel {
       numPedido: json['num-pedido']?.toString() ?? '',
       numeroOrdem: json['numero-ordem']?.toString() ?? '',
       versao: json['versao'] as int? ?? 0,
+      alteradoLocal: false,
+      hashState: json['hash-state'] ?? '',
     );
   }
 
@@ -138,18 +140,9 @@ class ItDocFisicoModel {
       'qtde-item': qtdeItem,
       'qtde-conferida': qtdeConferida,
       'versao': versao,
+      'alterado-local': alteradoLocal,
+      'hash-state': hashState,
       'rateios': rateios?.map((rat) => rat.toJson()).toList(),
-    };
-  }
-
-  /// Converte apenas os campos necessários para sincronização
-  Map<String, dynamic> toJsonSync() {
-    return {
-      'sequencia': nrSequencia,
-      'it-codigo': codItem,
-      'qtde-conferida': qtdeConferida,
-      'versao': versao,
-      'tt-rat-lote': rateios?.map((rat) => rat.toJson()).toList() ?? [],
     };
   }
 
@@ -169,9 +162,8 @@ class ItDocFisicoModel {
     String? numeroOrdem,
     bool? foiConferido,
     int? versao,
-    DateTime? dataUltAlt,
-    String? usuarioUltAlt,
-    bool? foiAlterado,
+    bool? alteradoLocal,
+    String? hashState,
   }) {
     return ItDocFisicoModel(
       nrSequencia: nrSequencia ?? this.nrSequencia,
@@ -184,9 +176,8 @@ class ItDocFisicoModel {
       numeroOrdem: numeroOrdem ?? this.numeroOrdem,
       foiConferido: foiConferido ?? this.foiConferido,
       versao: versao ?? this.versao,
-      dataUltAlt: dataUltAlt ?? this.dataUltAlt,
-      usuarioUltAlt: usuarioUltAlt ?? this.usuarioUltAlt,
-      foiAlterado: foiAlterado ?? this.foiAlterado,
+      alteradoLocal: alteradoLocal ?? this.alteradoLocal,
+      hashState: hashState ?? this.hashState,
     );
   }
 
@@ -352,11 +343,24 @@ class ItDocFisicoModel {
   // ==========================================================================
   // MÉTODOS AUXILIARES
   // ==========================================================================
-
+  /*
   @override
   String toString() {
     return 'ItDocFisicoModel(nrSequencia: $nrSequencia, codItem: $codItem, '
-        'qtdeItem: $qtdeItem, qtdeConferida: $qtdeConferida)';
+        'qtdeItem: $qtdeItem, qtdeConferida: $qtdeConferida),versao: $versao, hashState: ${hashState.isEmpty} ? vazio';
+  }
+*/
+  @override
+  String toString() {
+    return 'ItDocFisicoModel('
+        'itCodigo: $codItem, '
+        'sequencia: $nrSequencia, '
+        'quantidade: $qtdeItem, '
+        'qtdConferida: $qtdeConferida, '
+        'versao: $versao, '
+        'hashState: ${hashState.isEmpty ? "vazio" : hashState.substring(0, 8)}..., '
+        'alteradoLocal: $alteradoLocal'
+        ')';
   }
 
   @override

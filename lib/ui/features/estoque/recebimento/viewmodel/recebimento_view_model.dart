@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wmsapp/core/services/messenger_service.dart';
@@ -57,6 +59,7 @@ class RecebimentoViewModel extends BaseViewModel {
   bool get semResultados => !isLoading && _documentos.isEmpty;
   bool get isLoadingItens => _isLoadingItens;
   bool get isSyncing => _isSyncing;
+  Timer? _debounceTimer;
 
   Future<void> fetchDocumentosPendentes() async {
     if (_isInitialized && !isLoading) {
@@ -234,10 +237,39 @@ class RecebimentoViewModel extends BaseViewModel {
       (item) => item.nrSequencia == nrSequencia,
     );
 
+    if (item.qtdeConferida == quantidade) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] ⏭️ Valor não mudou (${item.qtdeConferida} == $quantidade), ignorando...',
+        );
+      }
+      return; // ← NÃO FAZ NADA se valor for igual
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] 📝 Atualizando item seq=$nrSequencia:\n'
+        '  Versão atual: ${item.versao}\n'
+        '  Qtde atual: ${item.qtdeConferida}\n'
+        '  Nova qtde: $quantidade\n'
+        '  Alterado local: ${item.alteradoLocal}',
+      );
+    }
+
     // ✅ IMPORTANTE: Marca como alterado localmente
     item.qtdeConferida = quantidade;
     item.foiConferido = item.qtdeConferida >= item.qtdeItem;
     item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] ✅ Item atualizado:\n'
+        '  Versão: ${item.versao} (mantida)\n'
+        '  Qtde conferida: ${item.qtdeConferida}\n'
+        '  Foi conferido: ${item.foiConferido}\n'
+        '  Alterado local: ${item.alteradoLocal}',
+      );
+    }
 
     if (kDebugMode) {
       debugPrint(
@@ -265,6 +297,16 @@ class RecebimentoViewModel extends BaseViewModel {
     final rateio = item.rateios!.firstWhere(
       (rat) => rat.chaveRateio == chaveRateio,
     );
+
+    // ✅ CRÍTICO: Só marca como alterado se o valor REALMENTE mudou
+    if (rateio.qtdeLote == quantidade) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] ⏭️ Rateio não mudou (${rateio.qtdeLote} == $quantidade), ignorando...',
+        );
+      }
+      return;
+    }
 
     rateio.qtdeLote = quantidade;
 
@@ -369,11 +411,11 @@ class RecebimentoViewModel extends BaseViewModel {
     if (user == null) return;
 
     if (_isSyncing) {
-      debugPrint('⏸️ Sincronização já em andamento, aguardando...');
+      if (kDebugMode) {
+        debugPrint('⏸️ Sincronização já em andamento, aguardando...');
+      }
       return; // Ignora chamada duplicada
     }
-
-    _isSyncing = true;
 
     // Filtra apenas itens alterados
     final itensAlterados = _documentoSelecionado!.itensDoc
@@ -387,6 +429,9 @@ class RecebimentoViewModel extends BaseViewModel {
       return;
     }
 
+    _isSyncing = true;
+    notifyListeners();
+
     if (kDebugMode) {
       debugPrint(
         '[RecebimentoVM] 📤 Sincronizando ${itensAlterados.length} itens...',
@@ -394,6 +439,17 @@ class RecebimentoViewModel extends BaseViewModel {
     }
 
     try {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] 📤 Sincronizando ${itensAlterados.length} itens...',
+        );
+        for (final item in itensAlterados) {
+          debugPrint(
+            '  - Item seq=${item.nrSequencia}, versao=${item.versao}, alteradoLocal=${item.alteradoLocal}',
+          );
+        }
+      }
+
       final response = await _syncService.sincronizarDocumento(
         documento: _documentoSelecionado!,
         itensAlterados: itensAlterados,
@@ -405,6 +461,24 @@ class RecebimentoViewModel extends BaseViewModel {
       if (response['versoes'] != null) {
         final versoesMap = Map<int, int>.from(response['versoes'] as Map);
         _atualizarVersoesLocais(versoesMap);
+      }
+
+      // ✅ ADICIONE ESTES LOGS:
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] 🔓 Desmarcando ${itensAlterados.length} itens como sincronizados...',
+        );
+      }
+
+      // ✅ ADICIONAR - Marca itens como sincronizados
+      for (final item in itensAlterados) {
+        item.alteradoLocal = false;
+
+        if (kDebugMode) {
+          debugPrint(
+            '  ✅ Item seq=${item.nrSequencia} DESMARCADO (versao=${item.versao}, alteradoLocal=${item.alteradoLocal})',
+          );
+        }
       }
 
       if (kDebugMode) {
@@ -429,7 +503,24 @@ class RecebimentoViewModel extends BaseViewModel {
       // Não mostra erro ao usuário em sync automático
       // Apenas em finalização manual
     } finally {
+      // ✅ ADICIONE LOG AQUI
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] 🔓 FINALLY: Liberando campo (_isSyncing=$_isSyncing → false)',
+        );
+      }
+
       _isSyncing = false;
+
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] 📢 Chamando notifyListeners()...');
+      }
+
+      notifyListeners();
+
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] ✅ Campo LIBERADO (_isSyncing=$_isSyncing)');
+      }
     }
   }
 
@@ -437,15 +528,42 @@ class RecebimentoViewModel extends BaseViewModel {
   void _atualizarVersoesLocais(Map<int, int> versoes) {
     if (_documentoSelecionado == null) return;
 
+    if (kDebugMode) {
+      debugPrint('[RecebimentoVM] 🔄 Iniciando atualização de versões...');
+      debugPrint('[RecebimentoVM] Versões recebidas do backend: $versoes');
+    }
+
     for (final item in _documentoSelecionado!.itensDoc) {
       final novaVersao = versoes[item.nrSequencia];
+
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] Item seq=${item.nrSequencia}: '
+          'versão ANTES=${item.versao}, versão NOVA=$novaVersao',
+        );
+      }
+
       if (novaVersao != null) {
+        final versaoAntiga = item.versao;
         item.versao = novaVersao;
-        item.alteradoLocal = false; // ✅ Já foi sincronizado
+
+        if (kDebugMode) {
+          debugPrint(
+            '[RecebimentoVM] ✅ Item seq=${item.nrSequencia}: '
+            'atualizado de $versaoAntiga para ${item.versao}',
+          );
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[RecebimentoVM] ⚠️ Item seq=${item.nrSequencia}: '
+            'NÃO TEM versão no retorno! Mantendo versão ${item.versao}',
+          );
+        }
       }
     }
 
-    notifyListeners();
+    //notifyListeners();
 
     if (kDebugMode) {
       debugPrint('[RecebimentoVM] 📋 Versões atualizadas localmente');
@@ -490,7 +608,36 @@ class RecebimentoViewModel extends BaseViewModel {
 
   /// Força sincronização manual (para botão na UI, se quiser)
   Future<void> sincronizarAgora() async {
-    await _sincronizarItensAlterados();
+    _debounceTimer?.cancel();
+
+    if (kDebugMode) {
+      debugPrint('[RecebimentoVM] 📤 sincronizarAgora() chamado');
+    }
+
+    if (_isSyncing) {
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] ⏳ Sync manual aguardando sync anterior...');
+      }
+      return;
+    }
+    // ⚠️ Cancela timer anterior (debounce)
+
+    // ⚠️ Aguarda 300ms para evitar múltiplas chamadas rápidas
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (kDebugMode) {
+        debugPrint('[RecebimentoVM] 📤 Sincronização MANUAL disparada');
+      }
+      // Verifica novamente se não está sincronizando
+      if (!_isSyncing) {
+        _sincronizarItensAlterados();
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[RecebimentoVM] ⏸️ Sync já em andamento no momento do timer',
+          );
+        }
+      }
+    });
   }
 
   // ==========================================================================
@@ -671,6 +818,7 @@ class RecebimentoViewModel extends BaseViewModel {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel(); // ✅ ADICIONAR
     _pararAutoSync(); // ✅ ADICIONAR - Para sync ao destruir ViewModel
 
     if (kDebugMode) {

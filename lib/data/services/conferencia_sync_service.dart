@@ -99,6 +99,12 @@ class ConferenciaSyncService {
   ) {
     // Monta lista de itens (tt-it-doc-fisico)
     final ttItDocFisico = itensAlterados.map((item) {
+      if (kDebugMode) {
+        print(
+          '📤 Enviando item seq=${item.nrSequencia} com versao=${item.versao}',
+        );
+      }
+
       // Monta lista de rateios DESTE item (tt-rat-lote)
       final ttRatLote = <Map<String, dynamic>>[];
 
@@ -163,6 +169,11 @@ class ConferenciaSyncService {
         throw Exception('Resposta vazia do servidor');
       }
 
+      if (kDebugMode) {
+        print('📥 Response completo do backend:');
+        print(jsonEncode(response));
+      }
+
       // ✅ CORREÇÃO: Usa Map.from ao invés de cast direto
       final dsDocto = items[0]['dsDocto'] != null
           ? Map<String, dynamic>.from(items[0]['dsDocto'] as Map)
@@ -195,6 +206,10 @@ class ConferenciaSyncService {
         return {'versoes': {}};
       }
 
+      if (kDebugMode) {
+        print('📦 tt-it-doc-fisico recebido: ${ttItDocFisico.length} itens');
+      }
+
       // Monta map de versões: sequencia -> versao
       final versoes = <int, int>{};
       for (final item in ttItDocFisico) {
@@ -205,6 +220,9 @@ class ConferenciaSyncService {
           versoes[sequencia] = versao;
           print('✅ Versão extraída: sequencia=$sequencia, versao=$versao');
         }
+      }
+      if (kDebugMode) {
+        print('✅ Map de versões montado: $versoes');
       }
       print('📋 Total de versões extraídas: ${versoes.length}');
       return {'versoes': versoes};

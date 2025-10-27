@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -74,8 +75,6 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
           : double.tryParse(_controller.text) ?? 0.0;
       widget.onQuantidadeChanged(value);
 
-      print('Leave-sync disparado');
-
       // ✅ NOVO: Sincroniza imediatamente
       final viewModel = context.read<RecebimentoViewModel>();
       viewModel.sincronizarAgora();
@@ -89,8 +88,6 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
 
     final viewModel = context.watch<RecebimentoViewModel>();
     final isReadOnlyConferida = viewModel.isSyncing;
-
-    print('ReadOnly value => $isReadOnlyConferida');
 
     Color borderColor = Colors.transparent;
     double borderWidth = 1;
@@ -211,7 +208,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
-                    readOnly: isReadOnlyConferida,
+                    enabled: !isReadOnlyConferida,
                     focusNode: _focusNode,
                     controller: _controller,
                     keyboardType: const TextInputType.numberWithOptions(
@@ -222,7 +219,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                     ],
                     onEditingComplete: () => FocusScope.of(context).nextFocus(),
                     decoration: InputDecoration(
-                      hintText: '0.00',
+                      hintText: '0.0000',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -230,6 +227,19 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                         horizontal: 12,
                         vertical: 12,
                       ),
+                      suffixIcon: isReadOnlyConferida
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            )
+                          : null,
                     ),
                     style: const TextStyle(
                       fontSize: 18,

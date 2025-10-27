@@ -87,6 +87,11 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
     // Detecta se é tablet
     final isTablet = MediaQuery.of(context).size.width > 768;
 
+    final viewModel = context.watch<RecebimentoViewModel>();
+    final isReadOnlyConferida = viewModel.isSyncing;
+
+    print('ReadOnly value => $isReadOnlyConferida');
+
     Color borderColor = Colors.transparent;
     double borderWidth = 1;
 
@@ -196,13 +201,17 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Row(
               children: [
-                const Text(
+                Text(
                   'Qtd. conferida:',
-                  style: TextStyle(fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: isReadOnlyConferida ? Colors.grey : Colors.black,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    readOnly: isReadOnlyConferida,
                     focusNode: _focusNode,
                     controller: _controller,
                     keyboardType: const TextInputType.numberWithOptions(

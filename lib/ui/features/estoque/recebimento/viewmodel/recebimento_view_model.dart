@@ -34,6 +34,7 @@ class RecebimentoViewModel extends BaseViewModel {
   String _searchTerm = '';
   bool _isInitialized = false;
   bool _isLoadingItens = false;
+  bool _isSyncing = false;
 
   //Documentos
 
@@ -55,6 +56,7 @@ class RecebimentoViewModel extends BaseViewModel {
   bool get hasDocumentos => _documentos.isNotEmpty;
   bool get semResultados => !isLoading && _documentos.isEmpty;
   bool get isLoadingItens => _isLoadingItens;
+  bool get isSyncing => _isSyncing;
 
   Future<void> fetchDocumentosPendentes() async {
     if (_isInitialized && !isLoading) {
@@ -366,7 +368,12 @@ class RecebimentoViewModel extends BaseViewModel {
     final user = _session.currentUser;
     if (user == null) return;
 
-    _isLoadingItens = true;
+    if (_isSyncing) {
+      debugPrint('⏸️ Sincronização já em andamento, aguardando...');
+      return; // Ignora chamada duplicada
+    }
+
+    _isSyncing = true;
 
     // Filtra apenas itens alterados
     final itensAlterados = _documentoSelecionado!.itensDoc
@@ -422,7 +429,7 @@ class RecebimentoViewModel extends BaseViewModel {
       // Não mostra erro ao usuário em sync automático
       // Apenas em finalização manual
     } finally {
-      _isLoadingItens = false;
+      _isSyncing = false;
     }
   }
 

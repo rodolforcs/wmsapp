@@ -77,6 +77,18 @@ class ConferenciaSyncService {
       return result;
     } catch (e) {
       print('❌ Erro no sync: $e');
+
+      // ✅ CORREÇÃO: Detecta erro de versão divergente e trata como conflito
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('versão') &&
+          (errorMsg.contains('divergente') ||
+              errorMsg.contains('atualização'))) {
+        print('⚠️ Erro de versão detectado - tratando como conflito');
+        throw ConflictException(
+          'Dados foram alterados no servidor. Recarregando documento...',
+        );
+      }
+
       rethrow; // Propaga erro para o ViewModel tratar
     }
   }
@@ -165,10 +177,21 @@ class ConferenciaSyncService {
         return {'conflito': true};
       }
 
-      // Extrai versões das tt-it-doc-fisico retornadas
-      final ttItDocFisico = dsDocto['tt-it-doc-fisico'] as List?;
+      final ttDocFisico = dsDocto['tt-doc-fisico'] as List?;
 
-      if (ttItDocFisico == null) {
+      if (ttDocFisico == null || ttDocFisico.isEmpty) {
+        print('⚠️ tt-doc-fisico vazio ou null');
+        return {'versoes': {}};
+      }
+
+      final documento = ttDocFisico[0] as Map<String, dynamic>;
+      final ttItDocFisico = documento['tt-it-doc-fisico'] as List?;
+
+      // Extrai versões das tt-it-doc-fisico retornadas
+      //final ttItDocFisico = dsDocto['tt-it-doc-fisico'] as List?;
+
+      if (ttItDocFisico == null || ttItDocFisico.isEmpty) {
+        print('⚠️ tt-it-doc-fisico vazio ou null');
         return {'versoes': {}};
       }
 
@@ -180,9 +203,10 @@ class ConferenciaSyncService {
 
         if (sequencia != null && versao != null) {
           versoes[sequencia] = versao;
+          print('✅ Versão extraída: sequencia=$sequencia, versao=$versao');
         }
       }
-
+      print('📋 Total de versões extraídas: ${versoes.length}');
       return {'versoes': versoes};
     } catch (e) {
       print('❌ Erro ao fazer parse da resposta: $e');

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/it_doc_fisico_model.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
+import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/recebimento_view_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio_tile.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio/rateio_data_table.dart';
 //import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateios_data_table.dart';
@@ -71,6 +73,12 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
           ? 0.0
           : double.tryParse(_controller.text) ?? 0.0;
       widget.onQuantidadeChanged(value);
+
+      print('Leave-sync disparado');
+
+      // ✅ NOVO: Sincroniza imediatamente
+      final viewModel = context.read<RecebimentoViewModel>();
+      viewModel.sincronizarAgora();
     }
   }
 

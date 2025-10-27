@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wmsapp/core/services/messenger_service.dart';
 import 'package:wmsapp/core/viewmodel/base_view_model.dart';
@@ -365,6 +366,8 @@ class RecebimentoViewModel extends BaseViewModel {
     final user = _session.currentUser;
     if (user == null) return;
 
+    _isLoadingItens = true;
+
     // Filtra apenas itens alterados
     final itensAlterados = _documentoSelecionado!.itensDoc
         .where((item) => item.alteradoLocal)
@@ -416,9 +419,10 @@ class RecebimentoViewModel extends BaseViewModel {
       if (kDebugMode) {
         debugPrint('[RecebimentoVM] ❌ Erro ao sincronizar: $e');
       }
-
       // Não mostra erro ao usuário em sync automático
       // Apenas em finalização manual
+    } finally {
+      _isLoadingItens = false;
     }
   }
 

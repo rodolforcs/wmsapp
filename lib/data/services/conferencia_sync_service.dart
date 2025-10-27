@@ -176,10 +176,19 @@ class ConferenciaSyncService {
         return {'conflito': true};
       }
 
-      // Extrai versões das tt-it-doc-fisico retornadas
-      final ttItDocFisico = dsDocto['tt-it-doc-fisico'] as List?;
+      // ✅ CORREÇÃO: Itens estão DENTRO de tt-doc-fisico[0], não direto no dsDocto
+      final ttDocFisico = dsDocto['tt-doc-fisico'] as List?;
 
-      if (ttItDocFisico == null) {
+      if (ttDocFisico == null || ttDocFisico.isEmpty) {
+        print('⚠️ tt-doc-fisico vazio ou null');
+        return {'versoes': {}};
+      }
+
+      final documento = ttDocFisico[0] as Map<String, dynamic>;
+      final ttItDocFisico = documento['tt-it-doc-fisico'] as List?;
+
+      if (ttItDocFisico == null || ttItDocFisico.isEmpty) {
+        print('⚠️ tt-it-doc-fisico vazio ou null');
         return {'versoes': {}};
       }
 
@@ -191,9 +200,11 @@ class ConferenciaSyncService {
 
         if (sequencia != null && versao != null) {
           versoes[sequencia] = versao;
+          print('✅ Versão extraída: sequencia=$sequencia, versao=$versao');
         }
       }
 
+      print('📋 Total de versões extraídas: ${versoes.length}');
       return {'versoes': versoes};
     } catch (e) {
       print('❌ Erro ao fazer parse da resposta: $e');

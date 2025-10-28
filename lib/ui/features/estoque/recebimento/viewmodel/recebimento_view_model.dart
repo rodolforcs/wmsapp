@@ -258,7 +258,6 @@ class RecebimentoViewModel extends BaseViewModel {
 
     // ✅ IMPORTANTE: Marca como alterado localmente
     item.qtdeConferida = quantidade;
-    item.foiConferido = item.qtdeConferida >= item.qtdeItem;
     item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
 
     if (kDebugMode) {
@@ -335,7 +334,10 @@ class RecebimentoViewModel extends BaseViewModel {
     );
 
     item.rateios ??= [];
-    item.rateios!.add(rateio);
+
+    final rateioSeq = rateio.copyWith(sequencia: item.nrSequencia);
+
+    item.rateios!.add(rateioSeq);
 
     item.qtdeConferida = item.rateios!.fold<double>(
       0.0,

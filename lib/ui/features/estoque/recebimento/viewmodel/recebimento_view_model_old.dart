@@ -237,7 +237,6 @@ class RecebimentoViewModel extends BaseViewModel {
 
     // 2. 🔥 LÓGICA ADICIONADA: Recalcula o status de conferência do item
     //    (Assumindo que seu modelo ItDocFisicoModel tem a propriedade 'quantidade' original)
-    item.foiConferido = item.qtdeConferida >= item.qtdeItem;
 
     if (kDebugMode) {
       debugPrint(

@@ -39,7 +39,7 @@ class ItDocFisicoModel {
 
   final String numPedido;
   final String numeroOrdem;
-  bool foiConferido;
+  //bool foiConferido;
   bool alteradoLocal;
   final String hashState;
 
@@ -52,7 +52,6 @@ class ItDocFisicoModel {
     this.itemCadastro,
     this.numPedido = '',
     this.numeroOrdem = '',
-    this.foiConferido = false,
     this.alteradoLocal = false,
     this.hashState = '',
     required this.versao,
@@ -160,7 +159,6 @@ class ItDocFisicoModel {
     ItemModel? itemCadastro,
     String? numPedido,
     String? numeroOrdem,
-    bool? foiConferido,
     int? versao,
     bool? alteradoLocal,
     String? hashState,
@@ -174,7 +172,6 @@ class ItDocFisicoModel {
       itemCadastro: itemCadastro ?? this.itemCadastro,
       numPedido: numPedido ?? this.numPedido,
       numeroOrdem: numeroOrdem ?? this.numeroOrdem,
-      foiConferido: foiConferido ?? this.foiConferido,
       versao: versao ?? this.versao,
       alteradoLocal: alteradoLocal ?? this.alteradoLocal,
       hashState: hashState ?? this.hashState,
@@ -196,6 +193,8 @@ class ItDocFisicoModel {
 
   /// Verifica se item controla endereço (do cadastro)
   bool get controlaEndereco => itemCadastro?.controlaEndereco ?? false;
+
+  bool get foiConferido => qtdeConferida > 0;
 
   // ==========================================================================
   // VALIDAÇÃO 1: Quantidade Conferida vs Esperada

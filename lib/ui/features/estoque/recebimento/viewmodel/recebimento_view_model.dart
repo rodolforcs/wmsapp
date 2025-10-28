@@ -289,6 +289,12 @@ class RecebimentoViewModel extends BaseViewModel {
 
     final item = _documentoSelecionado!.itensDoc.firstWhere(
       (item) => item.nrSequencia == nrSequencia,
+      orElse: () {
+        if (kDebugMode) {
+          debugPrint('⚠️ Item com sequência $nrSequencia não encontrado!');
+        }
+        throw StateError('Item não encontrado');
+      },
     );
 
     if (!item.hasRateios) return;
@@ -360,6 +366,12 @@ class RecebimentoViewModel extends BaseViewModel {
 
     final item = _documentoSelecionado!.itensDoc.firstWhere(
       (item) => item.nrSequencia == nrSequencia,
+      orElse: () {
+        if (kDebugMode) {
+          debugPrint('⚠️ Item não encontrado ao remover rateio');
+        }
+        throw StateError('Item não encontrado');
+      },
     );
 
     if (!item.hasRateios) return;

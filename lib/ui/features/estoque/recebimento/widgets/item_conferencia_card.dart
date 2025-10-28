@@ -377,7 +377,260 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
   }
 
   void _mostrarDialogNovoRateio(BuildContext context) {
-    final seqController = TextEditingController();
+    final loteController = TextEditingController();
+    final quantidadeController = TextEditingController();
+    final localizController = TextEditingController();
+    final depositoController = TextEditingController();
+    DateTime? dataValidade;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Novo Rateio'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ✅ Informações do item (não editáveis)
+                Card(
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Item: ${widget.item.codItem}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.item.descrItem,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Sequência: ${widget.item.nrSequencia}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            Text(
+                              'Qtde conferida: ${widget.item.qtdeConferida.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Não rateado: ${widget.item.qtdeNaoRateada.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: widget.item.qtdeNaoRateada > 0
+                                ? Colors.orange[700]
+                                : Colors.green[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ✅ Campos editáveis do rateio
+                TextField(
+                  controller: depositoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Depósito *',
+                    hintText: 'Ex: ALM',
+                    border: OutlineInputBorder(),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: localizController,
+                  decoration: const InputDecoration(
+                    labelText: 'Localização',
+                    hintText: 'Ex: P01A1',
+                    border: OutlineInputBorder(),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                ),
+                const SizedBox(height: 12),
+
+                // ✅ Campos de lote (apenas se controla lote)
+                if (widget.item.controlaLote) ...[
+                  TextField(
+                    controller: loteController,
+                    decoration: const InputDecoration(
+                      labelText: 'Lote *',
+                      hintText: 'Ex: L001',
+                      border: OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                  const SizedBox(height: 12),
+
+                  InkWell(
+                    onTap: () async {
+                      final data = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 3650),
+                        ),
+                      );
+                      if (data != null) {
+                        setStateDialog(() => dataValidade = data);
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Data de Validade',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.calendar_today),
+                      ),
+                      child: Text(
+                        dataValidade != null
+                            ? '${dataValidade!.day.toString().padLeft(2, '0')}/'
+                                  '${dataValidade!.month.toString().padLeft(2, '0')}/'
+                                  '${dataValidade!.year}'
+                            : 'Selecione a data (opcional)',
+                        style: TextStyle(
+                          color: dataValidade != null
+                              ? Colors.black
+                              : Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                TextField(
+                  controller: quantidadeController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Quantidade *',
+                    hintText: '0.00',
+                    border: const OutlineInputBorder(),
+                    helperText:
+                        'Restante para ratear: ${widget.item.qtdeNaoRateada.toStringAsFixed(2)}',
+                    helperMaxLines: 2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // ✅ Validações
+                if (depositoController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Informe o depósito'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                /* 
+                if (localizController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Informe a localização'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                */
+
+                if (widget.item.controlaLote &&
+                    loteController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Item controla lote - informe o lote'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                final quantidade = double.tryParse(quantidadeController.text);
+
+                if (quantidade == null || quantidade <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Informe uma quantidade válida (maior que zero)',
+                      ),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                // ✅ Cria rateio - sequência será preenchida no ViewModel
+                final novoRateio = RatLoteModel(
+                  codDepos: depositoController.text.trim().toUpperCase(),
+                  codLocaliz: localizController.text.trim().toUpperCase(),
+                  codLote: loteController.text.trim().toUpperCase(),
+                  qtdeLote: quantidade,
+                  dtValidade: dataValidade,
+                  isEditavel: true,
+                  sequencia:
+                      widget.item.nrSequencia, // ✅ Usa a sequência do item!
+                );
+
+                if (kDebugMode) {
+                  debugPrint('📦 Criando rateio:');
+                  debugPrint('  Item seq: ${widget.item.nrSequencia}');
+                  debugPrint('  Rateio seq: ${novoRateio.sequencia}');
+                  debugPrint('  Depósito: ${novoRateio.codDepos}');
+                  debugPrint('  Localização: ${novoRateio.codLocaliz}');
+                  debugPrint('  Lote: ${novoRateio.codLote}');
+                  debugPrint('  Quantidade: ${novoRateio.qtdeLote}');
+                }
+
+                widget.onAdicionarRateio!(novoRateio);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Adicionar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /*
+  void _mostrarDialogNovoRateio(BuildContext context) {    
     final loteController = TextEditingController();
     final quantidadeController = TextEditingController();
     final localizController = TextEditingController();
@@ -393,8 +646,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: seqController,
+                TextField(                  
                   keyboardType: TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -539,4 +791,5 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
       ),
     );
   }
+  */
 }

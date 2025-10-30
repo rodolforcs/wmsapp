@@ -9,9 +9,9 @@ class ItensConferenciaList extends StatelessWidget {
   final bool isLoading;
   final bool showEmptyForFilter;
   final void Function(int, double) onQuantidadeChanged;
-  final void Function(int, String, double) onRateioQuantidadeChanged;
+  final void Function(int, int, double) onRateioQuantidadeChanged;
   final void Function(int, dynamic) onAdicionarRateio;
-  final void Function(int, String) onRemoverRateio;
+  final void Function(int, int) onRemoverRateio;
 
   const ItensConferenciaList({
     super.key,
@@ -71,14 +71,14 @@ class ItensConferenciaList extends StatelessWidget {
             onQuantidadeChanged: (qtd) {
               onQuantidadeChanged(item.nrSequencia, qtd);
             },
-            onRateioQuantidadeChanged: (chave, qtd) {
-              onRateioQuantidadeChanged(item.nrSequencia, chave, qtd);
+            onRateioQuantidadeChanged: (rateioIndex, qtd) {
+              onRateioQuantidadeChanged(item.nrSequencia, rateioIndex, qtd);
             },
             onAdicionarRateio: (rateio) {
               onAdicionarRateio(item.nrSequencia, rateio);
             },
-            onRemoverRateio: (chave) {
-              onRemoverRateio(item.nrSequencia, chave);
+            onRemoverRateio: (rateioIndex) {
+              onRemoverRateio(item.nrSequencia, rateioIndex);
             },
           );
         },

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 import 'package:wmsapp/data/models/item_model.dart';
 
@@ -196,16 +197,13 @@ class ItDocFisicoModel {
 
   bool get foiConferido => qtdeConferida > 0;
 
+  String get qtdeConferidaFormat => qtdeConferida.toStringAsFixed(4);
+  String get qtdItemFormat => qtdeItem.toStringAsFixed(4);
+  String get somaTotalRateiosFormat => somaTotalRateios.toStringAsFixed(4);
+
   // ==========================================================================
   // VALIDAÇÃO 1: Quantidade Conferida vs Esperada
   // ==========================================================================
-
-  /*
-  /// Verifica se o item foi conferido
-  bool get foiConferido {
-    return qtdeConferida > 0;
-  }
-  */
 
   /// Verifica se há divergência entre quantidade ESPERADA e CONFERIDA
   /// Esta validação é independente dos rateios
@@ -243,16 +241,16 @@ class ItDocFisicoModel {
   /// ⚠️ Só valida se qtdeConferida > 0
   /// ⚠️ Só aplica se item controla lote ou endereço
   bool get temDivergenciaRateio {
-    // Se não conferiu ainda, não tem divergência de rateio
+    // ✅ REGRA 1: Se não conferiu ainda, não valida rateio
     if (!foiConferido) return false;
 
-    // Se não controla lote/endereço, não precisa validar rateio
+    // ✅ REGRA 2: Se não controla lote/endereço, não precisa ratear
     if (!controlaLote && !controlaEndereco) return false;
 
-    // Se conferiu mas não tem rateios, está divergente
+    // ✅ REGRA 3: Se conferiu mas não tem rateios, está divergente
     if (!hasRateios) return true;
 
-    // Valida se soma dos rateios bate com o conferido
+    // ✅ REGRA 4: Valida se soma dos rateios bate com o conferido
     return somaTotalRateios != qtdeConferida;
   }
 
@@ -289,11 +287,15 @@ class ItDocFisicoModel {
     final qtdOk = quantidadeConferidaCorreta;
     final ratOk = rateiosCorretos;
 
-    print(
-      '[DEBUG] Item $codItem: qtdeItem=$qtdeItem, qtdeConferida=$qtdeConferida',
-    );
-    print('[DEBUG] quantidadeConferidaCorreta=$qtdOk, rateiosCorretos=$ratOk');
-    print('[DEBUG] conferidoCorreto=${qtdOk && ratOk}');
+    if (kDebugMode) {
+      print('[DEBUG] Item $codItem:');
+      print('  qtdeItem=$qtdeItem');
+      print('  qtdeConferida=$qtdeConferida');
+      print('  somaTotalRateios=$somaTotalRateios');
+      print('  quantidadeConferidaCorreta=$qtdOk');
+      print('  rateiosCorretos=$ratOk');
+      print('  conferidoCorreto=${qtdOk && ratOk}');
+    }
 
     // Deve estar correto em AMBAS as validações
     return qtdOk && ratOk;
@@ -306,15 +308,15 @@ class ItDocFisicoModel {
   /// Retorna mensagem de divergência de QUANTIDADE
   String get mensagemDivergenciaQuantidade {
     if (!temDivergenciaQuantidade) return '';
-    return 'Esperado: ${qtdeItem.toStringAsFixed(2)} | '
-        'Conferido: ${qtdeConferida.toStringAsFixed(2)}';
+    return 'Esperado: ${qtdeItem.toStringAsFixed(4)} | '
+        'Conferido: ${qtdeConferida.toStringAsFixed(4)}';
   }
 
   /// Retorna mensagem de divergência de RATEIO
   String get mensagemDivergenciaRateio {
     if (!temDivergenciaRateio) return '';
-    return 'Conferido: ${qtdeConferida.toStringAsFixed(2)} | '
-        'Soma rateios: ${somaTotalRateios.toStringAsFixed(2)}';
+    return 'Conferido: ${qtdeConferida.toStringAsFixed(4)} | '
+        'Soma rateios: ${somaTotalRateios.toStringAsFixed(4)}';
   }
 
   /// Retorna mensagem de divergência combinada (se houver)

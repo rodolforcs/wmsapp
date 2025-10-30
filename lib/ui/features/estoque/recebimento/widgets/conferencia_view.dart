@@ -74,12 +74,16 @@ class _ConferenciaViewState extends State<ConferenciaView> {
                   totalItens > 0,
               onQuantidadeChanged: (sequencia, qtd) =>
                   viewModel.atualizarQuantidadeItem(sequencia, qtd),
-              onRateioQuantidadeChanged: (sequencia, chave, qtd) =>
-                  viewModel.atualizarQuantidadeRateio(sequencia, chave, qtd),
+              onRateioQuantidadeChanged: (sequencia, rateioIndex, qtd) =>
+                  viewModel.atualizarQuantidadeRateioPorIndice(
+                    sequencia,
+                    rateioIndex,
+                    qtd,
+                  ),
               onAdicionarRateio: (sequencia, rateio) =>
                   viewModel.adicionarRateio(sequencia, rateio),
-              onRemoverRateio: (sequencia, chave) =>
-                  viewModel.removerRateio(sequencia, chave),
+              onRemoverRateio: (sequencia, rateioIndex) =>
+                  viewModel.removerRateioPorIndice(sequencia, rateioIndex),
             ),
           ),
           ConferenciaActionBar(

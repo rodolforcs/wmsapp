@@ -297,11 +297,31 @@ class RecebimentoViewModel extends BaseViewModel {
       },
     );
 
-    if (!item.hasRateios) return;
+    if (!item.hasRateios) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Item seq=$nrSequencia não tem rateios');
+      }
+      return;
+    }
 
-    final rateio = item.rateios!.firstWhere(
-      (rat) => rat.chaveRateio == chaveRateio,
-    );
+    // ✅ Busca rateio com tratamento de erro
+    RatLoteModel? rateio;
+    try {
+      rateio = item.rateios!.firstWhere(
+        (rat) => rat.chaveRateio == chaveRateio,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '⚠️ Rateio $chaveRateio não encontrado no item seq=$nrSequencia',
+        );
+        debugPrint('   Rateios disponíveis:');
+        for (final r in item.rateios!) {
+          debugPrint('     - ${r.chaveRateio}');
+        }
+      }
+      return; // ✅ Retorna sem fazer nada se não encontrar
+    }
 
     // ✅ CRÍTICO: Só marca como alterado se o valor REALMENTE mudou
     if (rateio.qtdeLote == quantidade) {
@@ -337,6 +357,7 @@ class RecebimentoViewModel extends BaseViewModel {
 
     final item = _documentoSelecionado!.itensDoc.firstWhere(
       (item) => item.nrSequencia == nrSequencia,
+      orElse: () => throw StateError('Item não encontrado'),
     );
 
     item.rateios ??= [];
@@ -344,11 +365,6 @@ class RecebimentoViewModel extends BaseViewModel {
     final rateioSeq = rateio.copyWith(sequencia: item.nrSequencia);
 
     item.rateios!.add(rateioSeq);
-
-    item.qtdeConferida = item.rateios!.fold<double>(
-      0.0,
-      (sum, rat) => sum + rat.qtdeLote,
-    );
 
     item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
 
@@ -839,5 +855,103 @@ class RecebimentoViewModel extends BaseViewModel {
       debugPrint('[RecebimentoVM] Disposed');
     }
     super.dispose();
+  }
+
+  /// Atualiza quantidade de rateio por ÍNDICE (mais confiável)
+  void atualizarQuantidadeRateioPorIndice(
+    int nrSequencia,
+    int rateioIndex,
+    double quantidade,
+  ) {
+    if (_documentoSelecionado == null) return;
+
+    final item = _documentoSelecionado!.itensDoc.firstWhere(
+      (item) => item.nrSequencia == nrSequencia,
+      orElse: () {
+        if (kDebugMode) {
+          debugPrint('⚠️ Item com sequência $nrSequencia não encontrado!');
+        }
+        throw StateError('Item não encontrado');
+      },
+    );
+
+    if (!item.hasRateios || rateioIndex >= item.rateios!.length) {
+      if (kDebugMode) {
+        debugPrint(
+          '⚠️ Índice de rateio inválido: $rateioIndex (total: ${item.rateios?.length ?? 0})',
+        );
+      }
+      return;
+    }
+
+    final rateio = item.rateios![rateioIndex];
+
+    // Verifica se valor realmente mudou
+    if ((rateio.qtdeLote - quantidade).abs() < 0.01) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RecebimentoVM] ⏭️ Rateio index=$rateioIndex não mudou (${rateio.qtdeLote} == $quantidade), ignorando...',
+        );
+      }
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] 📝 Atualizando rateio index=$rateioIndex:\n'
+        '  Depósito: ${rateio.codDepos}\n'
+        '  Localização: ${rateio.codLocaliz}\n'
+        '  Lote: ${rateio.codLote}\n'
+        '  Qtde: ${rateio.qtdeLote} → $quantidade',
+      );
+    }
+
+    rateio.qtdeLote = quantidade;
+
+    item.alteradoLocal = true;
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] ✅ Rateio atualizado: Nova soma total = ${item.qtdeConferida}',
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Remove rateio por ÍNDICE
+  void removerRateioPorIndice(int nrSequencia, int rateioIndex) {
+    if (_documentoSelecionado == null) return;
+
+    final item = _documentoSelecionado!.itensDoc.firstWhere(
+      (item) => item.nrSequencia == nrSequencia,
+      orElse: () => throw StateError('Item não encontrado'),
+    );
+
+    if (!item.hasRateios || rateioIndex >= item.rateios!.length) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Índice de rateio inválido para remoção: $rateioIndex');
+      }
+      return;
+    }
+
+    final rateio = item.rateios![rateioIndex];
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] 🗑️ Removendo rateio index=$rateioIndex:\n'
+        '  ${rateio.codDepos}-${rateio.codLocaliz}-${rateio.codLote}',
+      );
+    }
+
+    item.rateios!.removeAt(rateioIndex);
+
+    item.alteradoLocal = true;
+
+    notifyListeners();
+
+    if (kDebugMode) {
+      debugPrint('[RecebimentoVM] ✅ Rateio removido (marcado para sync)');
+    }
   }
 }

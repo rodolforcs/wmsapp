@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
@@ -6,21 +7,31 @@ import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 // RATEIOS DATA TABLE - Tabela de rateios para tablet/desktop
 // ============================================================================
 
-class RateiosDataTable extends StatelessWidget {
+class RateioDataTable extends StatefulWidget {
   final List<RatLoteModel> rateios;
   final Function(int index, RatLoteModel rateioAtualizado) onRateioChanged;
   final Function(int index)? onRemover;
   final VoidCallback? onAdicionar;
-  final bool controlaLote; // ← ADICIONE
+  final bool controlaLote;
+  final Function(int index)? onSalvar; // ✅ NOVO
 
-  const RateiosDataTable({
+  const RateioDataTable({
     super.key,
     required this.rateios,
     required this.onRateioChanged,
     this.onRemover,
     this.onAdicionar,
-    this.controlaLote = true, // ← ADICIONE com valor padrão
+    this.controlaLote = true,
+    this.onSalvar, // ✅ NOVO
   });
+
+  @override
+  State<RateioDataTable> createState() => _RateioDataTableState();
+}
+
+class _RateioDataTableState extends State<RateioDataTable> {
+  // ✅ Controla quais rateios foram editados
+  final Set<int> _rateiosaEditados = {};
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +51,9 @@ class RateiosDataTable extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (onAdicionar != null)
+              if (widget.onAdicionar != null)
                 ElevatedButton.icon(
-                  onPressed: onAdicionar,
+                  onPressed: widget.onAdicionar,
                   icon: const Icon(Icons.add, size: 20),
                   label: const Text('Adicionar Rateio'),
                   style: ElevatedButton.styleFrom(
@@ -57,7 +68,7 @@ class RateiosDataTable extends StatelessWidget {
         ),
 
         // DataTable
-        if (rateios.isEmpty)
+        if (widget.rateios.isEmpty)
           _buildEmptyState()
         else
           SingleChildScrollView(
@@ -117,7 +128,7 @@ class RateiosDataTable extends StatelessWidget {
                   ),
                 ),
               ],
-              rows: rateios.asMap().entries.map((entry) {
+              rows: widget.rateios.asMap().entries.map((entry) {
                 final index = entry.key;
                 final rateio = entry.value;
                 return _buildDataRow(context, index, rateio);
@@ -129,41 +140,68 @@ class RateiosDataTable extends StatelessWidget {
   }
 
   DataRow _buildDataRow(BuildContext context, int index, RatLoteModel rateio) {
+    final foiEditado = _rateiosaEditados.contains(index);
+
+    // ✅ LOG PARA DEBUG
+    if (kDebugMode) {
+      print(
+        '🔍 Row $index: sequencia=${rateio.sequencia}, foiEditado=$foiEditado',
+      );
+    }
+
+    // ✅ LOG PARA DEBUG
+    if (kDebugMode) {
+      print(
+        '🔍 Row $index: foiEditado=$foiEditado, _rateiosaEditados=$_rateiosaEditados',
+      );
+    }
+
     return DataRow(
       cells: [
         // Sequência
-        DataCell(Text('${index + 1}')),
+        DataCell(Text('${rateio.sequencia}')),
 
         // Depósito (editável)
         DataCell(
           _TextEditableCell(
             value: rateio.codDepos,
             onChanged: (valor) {
-              final atualizado = rateio.copyWith(codDepos: valor);
-              onRateioChanged(index, atualizado);
+              if (valor != rateio.codDepos) {
+                // ✅ Marca como editado se mudou de valor
+                setState(() => _rateiosaEditados.add(index));
+                final atualizado = rateio.copyWith(codDepos: valor);
+                widget.onRateioChanged(index, atualizado);
+              }
             },
           ),
         ),
-
         // Localização (editável)
         DataCell(
           _TextEditableCell(
             value: rateio.codLocaliz,
             onChanged: (valor) {
-              final atualizado = rateio.copyWith(codLocalizacao: valor);
-              onRateioChanged(index, atualizado);
+              if (valor != rateio.codLocaliz) {
+                // ✅ Marca como editado
+                setState(() => _rateiosaEditados.add(index));
+                final atualizado = rateio.copyWith(codLocalizacao: valor);
+                widget.onRateioChanged(index, atualizado);
+              }
             },
           ),
         ),
 
         // Lote (editável só se controla lote)
         DataCell(
-          controlaLote
+          widget.controlaLote
               ? _TextEditableCell(
                   value: rateio.codLote,
                   onChanged: (valor) {
-                    final atualizado = rateio.copyWith(codLote: valor);
-                    onRateioChanged(index, atualizado);
+                    // ✅ Marca como editado
+                    if (valor != rateio.codLote) {
+                      setState(() => _rateiosaEditados.add(index));
+                      final atualizado = rateio.copyWith(codLote: valor);
+                      widget.onRateioChanged(index, atualizado);
+                    }
                   },
                 )
               : Container(
@@ -180,15 +218,21 @@ class RateiosDataTable extends StatelessWidget {
                   ),
                 ),
         ),
-
         // Validade (editável só se controla lote)
         DataCell(
-          controlaLote
+          widget.controlaLote
               ? _DateEditableCell(
                   value: rateio.dtValidade,
                   onChanged: (data) {
-                    final atualizado = rateio.copyWith(dtValidade: data);
-                    onRateioChanged(index, atualizado);
+                    if (data != rateio.dtValidade) {
+                      // ✅ Marca como editado
+                      setState(() {
+                        _rateiosaEditados.add(index);
+                      });
+
+                      final atualizado = rateio.copyWith(dtValidade: data);
+                      widget.onRateioChanged(index, atualizado);
+                    }
                   },
                 )
               : Container(
@@ -213,18 +257,100 @@ class RateiosDataTable extends StatelessWidget {
           _QuantidadeEditableCell(
             quantidade: rateio.qtdeLote,
             onChanged: (valor) {
-              final atualizado = rateio.copyWith(qtdeLote: valor);
-              onRateioChanged(index, atualizado);
+              if (valor != rateio.qtdeLote) {
+                // ✅ Marca como editado
+                setState(() => _rateiosaEditados.add(index));
+                final atualizado = rateio.copyWith(qtdeLote: valor);
+                widget.onRateioChanged(index, atualizado);
+              }
             },
           ),
         ),
 
-        // Ações
+        // ✅ Ações (Salvar + Deletar)
         DataCell(
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (onRemover != null)
+              /*
+              // ✅ LOG DO BOTÃO
+              if (kDebugMode) ...[
+                Text(
+                  '[$index:${foiEditado ? "EDIT" : "OK"}]',
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+                const SizedBox(width: 4),
+              ],
+              */
+              // ✅ Botão Salvar (só aparece se foi editado)
+              if (foiEditado && widget.onSalvar != null) ...[
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.check, size: 18),
+                    color: Colors.green.shade700,
+                    tooltip: 'Salvar alterações',
+                    onPressed: () {
+                      widget.onSalvar!(index);
+                      setState(() {
+                        _rateiosaEditados.remove(index);
+                      });
+                    },
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                /*
+                IconButton(
+                  icon: const Icon(Icons.save, size: 20),
+                  color: Colors.green,
+                  tooltip: 'Salvar alterações',
+                  onPressed: () {
+                    widget.onSalvar!(index);
+                    // Remove da lista de editados após salvar
+                    setState(() {
+                      _rateiosaEditados.remove(index);
+                    });
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 8),
+                */
+              ],
+
+              // Botão Deletar
+              if (widget.onRemover != null)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.red.shade300),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    color: Colors.red.shade700,
+                    tooltip: 'Remover',
+                    onPressed: () {
+                      _confirmarRemocao(context, index);
+                    },
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              /*
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
                   color: Colors.red,
@@ -233,6 +359,7 @@ class RateiosDataTable extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
+                */
             ],
           ),
         ),
@@ -259,10 +386,10 @@ class RateiosDataTable extends StatelessWidget {
                 color: Colors.grey[600],
               ),
             ),
-            if (onAdicionar != null) ...[
+            if (widget.onAdicionar != null) ...[
               const SizedBox(height: 8),
               TextButton.icon(
-                onPressed: onAdicionar,
+                onPressed: widget.onAdicionar,
                 icon: const Icon(Icons.add),
                 label: const Text('Adicionar primeiro rateio'),
               ),
@@ -273,10 +400,6 @@ class RateiosDataTable extends StatelessWidget {
     );
   }
 
-  bool _isVencido(DateTime validade) {
-    return validade.isBefore(DateTime.now());
-  }
-
   String _formatarData(DateTime data) {
     return '${data.day.toString().padLeft(2, '0')}/'
         '${data.month.toString().padLeft(2, '0')}/'
@@ -284,7 +407,7 @@ class RateiosDataTable extends StatelessWidget {
   }
 
   void _confirmarRemocao(BuildContext context, int index) {
-    if (onRemover == null) return;
+    if (widget.onRemover == null) return;
 
     showDialog(
       context: context,
@@ -299,7 +422,7 @@ class RateiosDataTable extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              onRemover!(index);
+              widget.onRemover!(index);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -314,7 +437,7 @@ class RateiosDataTable extends StatelessWidget {
 }
 
 // ============================================================================
-// CÉLULA EDITÁVEL DE TEXTO
+// CÉLULAS EDITÁVEIS (sem alterações - mantém seu código existente)
 // ============================================================================
 
 class _TextEditableCell extends StatefulWidget {
@@ -379,10 +502,6 @@ class _TextEditableCellState extends State<_TextEditableCell> {
     );
   }
 }
-
-// ============================================================================
-// CÉLULA EDITÁVEL DE DATA
-// ============================================================================
 
 class _DateEditableCell extends StatelessWidget {
   final DateTime? value;
@@ -450,10 +569,6 @@ class _DateEditableCell extends StatelessWidget {
         '${data.year}';
   }
 }
-
-// ============================================================================
-// CÉLULA EDITÁVEL DE QUANTIDADE
-// ============================================================================
 
 class _QuantidadeEditableCell extends StatefulWidget {
   final double quantidade;

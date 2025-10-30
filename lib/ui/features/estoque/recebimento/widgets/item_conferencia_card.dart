@@ -5,9 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/it_doc_fisico_model.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/recebimento_view_model.dart';
+import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio_data_table.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio_tile.dart';
-import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio/rateio_data_table.dart';
-//import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateios_data_table.dart';
 
 // ============================================================================
 // ITEM CONFERENCIA CARD - Card para conferir um item
@@ -16,9 +15,9 @@ import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio/rateio_dat
 class ItemConferenciaCard extends StatefulWidget {
   final ItDocFisicoModel item;
   final Function(double) onQuantidadeChanged;
-  final Function(String, double) onRateioQuantidadeChanged;
+  final Function(int index, double quantidade) onRateioQuantidadeChanged;
   final Function(RatLoteModel)? onAdicionarRateio;
-  final Function(String)? onRemoverRateio;
+  final Function(int index)? onRemoverRateio;
 
   const ItemConferenciaCard({
     super.key,
@@ -247,10 +246,22 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                     ),
                   ),
                 ),
+                // ✅ NOVO: Indicador de validação da quantidade conferida
+                if (widget.item.foiConferido) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    widget.item.quantidadeConferidaCorreta
+                        ? Icons.check_circle
+                        : Icons.warning_amber,
+                    color: widget.item.quantidadeConferidaCorreta
+                        ? Colors.green
+                        : Colors.orange,
+                    size: 24,
+                  ),
+                ],
               ],
             ),
           ),
-
           // Expansão de rateios
           ExpansionTile(
             title: Row(
@@ -260,20 +271,39 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 8),
-                if (widget.item.temDivergenciaRateio)
+                // ✅ NOVO: Só valida rateios se JÁ conferiu
+                if (widget.item.foiConferido &&
+                    widget.item.temDivergenciaRateio)
                   const Icon(
                     Icons.warning_amber_rounded,
                     color: Colors.orange,
                     size: 20,
                   ),
+                if (widget.item.foiConferido && widget.item.rateiosCorretos)
+                  const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 20,
+                  ),
               ],
             ),
             subtitle: Text(
-              'Total rateado: ${widget.item.somaTotalRateios.toStringAsFixed(2)} de ${widget.item.qtdeConferida.toStringAsFixed(2)}',
+              widget.item.foiConferido
+                  ? 'Total rateado: ${widget.item.somaTotalRateiosFormat} de ${widget.item.qtdeConferidaFormat}'
+                  : 'Confira a quantidade primeiro para habilitar rateios',
+              style: TextStyle(
+                color: widget.item.foiConferido ? null : Colors.grey,
+                fontStyle: widget.item.foiConferido ? null : FontStyle.italic,
+                fontSize: 13,
+              ),
             ),
-            onExpansionChanged: (expanded) {
-              setState(() => _isExpanded = expanded);
-            },
+            // ✅ NOVO: Desabilita expansão se não conferiu ainda
+            enabled: widget.item.foiConferido,
+            onExpansionChanged: widget.item.foiConferido
+                ? (expanded) {
+                    setState(() => _isExpanded = expanded);
+                  }
+                : null,
             children: [
               // TABLET: Usa DataTable
               if (isTablet) ...[
@@ -281,6 +311,11 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                   rateios: widget.item.rateios ?? [],
                   controlaLote: widget.item.controlaLote, // ← ADICIONE
                   onRateioChanged: (index, rateioAtualizado) {
+                    widget.onRateioQuantidadeChanged(
+                      index,
+                      rateioAtualizado.qtdeLote,
+                    );
+                    /*
                     // Atualiza o rateio completo
                     final rateios = List<RatLoteModel>.from(
                       widget.item.rateios!,
@@ -292,33 +327,42 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       rateioAtualizado.chaveRateio,
                       rateioAtualizado.qtdeLote,
                     );
+                    */
                   },
                   onRemover: widget.onRemoverRateio != null
                       ? (index) {
+                          widget.onRemoverRateio!(index);
+                          /*
                           final rateio = widget.item.rateios![index];
                           widget.onRemoverRateio!(rateio.chaveRateio);
+                          */
                         }
                       : null,
                   onAdicionar: widget.onAdicionarRateio != null
                       ? () => _mostrarDialogNovoRateio(context)
                       : null,
+
+                  // ✅ NOVO: Callback para salvar
+                  onSalvar: (index) => _salvarRateioIndividual(context, index),
                 ),
               ]
               // MOBILE: Usa Cards
               else ...[
                 if (widget.item.hasRateios && widget.item.rateios != null)
-                  ...widget.item.rateios!.map((rateio) {
+                  ...widget.item.rateios!.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final rateio = entry.value;
+
                     return RateioTile(
                       key: ValueKey(rateio.chaveRateio),
                       rateio: rateio,
                       onQuantidadeChanged: (valor) {
-                        widget.onRateioQuantidadeChanged(
-                          rateio.chaveRateio,
-                          valor,
-                        );
+                        // ✅ MUDOU: Usa índice
+                        widget.onRateioQuantidadeChanged(index, valor);
+                        ;
                       },
                       onRemover: widget.onRemoverRateio != null
-                          ? () => widget.onRemoverRateio!(rateio.chaveRateio)
+                          ? () => widget.onRemoverRateio!(index)
                           : null,
                       onFocusNext: () => FocusScope.of(context).nextFocus(),
                     );
@@ -335,7 +379,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       ),
                     ),
                   ),
-
+                /*
                 if (widget.onAdicionarRateio != null)
                   Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -351,6 +395,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       ),
                     ),
                   ),
+                  */
               ],
             ],
           ),
@@ -374,6 +419,48 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
       );
     }
     return const SizedBox.shrink();
+  }
+
+  // ✅ NOVO: Método para salvar rateio individual
+  Future<void> _salvarRateioIndividual(BuildContext context, int index) async {
+    final viewModel = context.read<RecebimentoViewModel>();
+
+    if (kDebugMode) {
+      debugPrint(
+        '💾 Salvando rateio index $index do item ${widget.item.codItem}',
+      );
+    }
+
+    try {
+      // TODO: Implementar método no ViewModel
+      // await viewModel.salvarRateioIndividual(widget.item.nrSequencia, index);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Rateio salvo com sucesso!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
   void _mostrarDialogNovoRateio(BuildContext context) {
@@ -427,14 +514,14 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                               style: const TextStyle(fontSize: 12),
                             ),
                             Text(
-                              'Qtde conferida: ${widget.item.qtdeConferida.toStringAsFixed(2)}',
+                              'Qtde conferida: ${widget.item.qtdeConferidaFormat}',
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Não rateado: ${widget.item.qtdeNaoRateada.toStringAsFixed(2)}',
+                          'Não rateado: ${widget.item.qtdeNaoRateada.toStringAsFixed(4)}',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -532,10 +619,10 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                   ],
                   decoration: InputDecoration(
                     labelText: 'Quantidade *',
-                    hintText: '0.00',
+                    hintText: '0.0000',
                     border: const OutlineInputBorder(),
                     helperText:
-                        'Restante para ratear: ${widget.item.qtdeNaoRateada.toStringAsFixed(2)}',
+                        'Restante para ratear: ${widget.item.qtdeNaoRateada.toStringAsFixed(4)}',
                     helperMaxLines: 2,
                   ),
                 ),

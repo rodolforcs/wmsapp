@@ -111,6 +111,8 @@ class RatLoteModel {
   /// Verifica se pode alterar quantidade (só rateios editáveis)
   bool get podeAlterarQuantidade => isEditavel;
 
+  String get qtdeLoteFormat => qtdeLote.toStringAsFixed(4);
+
   // ==========================================================================
   // MÉTODOS AUXILIARES
   // ==========================================================================

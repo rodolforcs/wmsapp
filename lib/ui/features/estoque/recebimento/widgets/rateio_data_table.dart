@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
+import 'package:wmsapp/shared/utils/format_number_utils.dart';
 
 // ============================================================================
 // RATEIOS DATA TABLE - Tabela de rateios para tablet/desktop
@@ -281,7 +282,7 @@ class _RateioDataTableState extends State<RateioDataTable> {
                 ),
                 const SizedBox(width: 4),
               ],
-              */
+            */
               // ✅ Botão Salvar (só aparece se foi editado)
               if (foiEditado && widget.onSalvar != null) ...[
                 Container(
@@ -593,7 +594,7 @@ class _QuantidadeEditableCellState extends State<_QuantidadeEditableCell> {
   void initState() {
     super.initState();
     _controller = TextEditingController(
-      text: widget.quantidade > 0 ? widget.quantidade.toStringAsFixed(2) : '',
+      text: FormatNumeroUtils.formatarQuantidadeOrEmpty(widget.quantidade),
     );
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
@@ -603,9 +604,9 @@ class _QuantidadeEditableCellState extends State<_QuantidadeEditableCell> {
   void didUpdateWidget(covariant _QuantidadeEditableCell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.quantidade != oldWidget.quantidade && !_isEditing) {
-      _controller.text = widget.quantidade > 0
-          ? widget.quantidade.toStringAsFixed(2)
-          : '';
+      _controller.text = FormatNumeroUtils.formatarQuantidadeOrEmpty(
+        widget.quantidade,
+      );
     }
   }
 
@@ -620,28 +621,34 @@ class _QuantidadeEditableCellState extends State<_QuantidadeEditableCell> {
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
       setState(() => _isEditing = false);
+      final value = FormatNumeroUtils.parseQuantidade(_controller.text) ?? 0.0;
+      widget.onChanged(value);
+      /*
       final value = _controller.text.isEmpty
           ? 0.0
           : double.tryParse(_controller.text) ?? 0.0;
       widget.onChanged(value);
+      */
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 100,
+      //width: 100,
+      width: FormatNumeroUtils.quantidadeCellWidth,
       child: TextField(
         controller: _controller,
         focusNode: _focusNode,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+          FilteringTextInputFormatter.allow(FormatNumeroUtils.quantidadeRegex),
         ],
         decoration: const InputDecoration(
           isDense: true,
           contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           border: OutlineInputBorder(),
+          hintText: FormatNumeroUtils.quantidadeHint,
         ),
         style: const TextStyle(fontSize: 14),
         textAlign: TextAlign.right,

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wmsapp/core/services/messenger_service.dart';
 import 'package:wmsapp/core/viewmodel/base_view_model.dart';
@@ -360,15 +359,45 @@ class RecebimentoViewModel extends BaseViewModel {
       orElse: () => throw StateError('Item não encontrado'),
     );
 
+    // ✅ VALIDAÇÃO antes de adicionar
+    final erro = item.validarNovoRateio(
+      codDepos: rateio.codDepos,
+      codLocaliz: rateio.codLocaliz,
+      codLote: rateio.codLote,
+      quantidade: rateio.qtdeLote,
+    );
+
+    if (erro != null) {
+      if (kDebugMode) {
+        debugPrint('❌ Validação falhou: $erro');
+      }
+      MessengerService.showError(
+        'Valiadação falhou $erro. Tente novamente.',
+      );
+      notifyListeners();
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] ➕ Adicionando rateio:\n'
+        '  Item seq: $nrSequencia\n'
+        '  Rateio seq: ${rateio.sequencia}\n'
+        '  Depósito: ${rateio.codDepos}\n'
+        '  Localização: ${rateio.codLocaliz}\n'
+        '  Lote: ${rateio.codLote}\n'
+        '  Quantidade: ${rateio.qtdeLote}',
+      );
+    }
+
     item.rateios ??= [];
-
     final rateioSeq = rateio.copyWith(sequencia: item.nrSequencia);
-
     item.rateios!.add(rateioSeq);
-
     item.alteradoLocal = true; // ✅ ADICIONAR - Marca para sync
 
     notifyListeners();
+
+    _salvarRateioNoBackend(nrSequencia, item.rateios!.length - 1);
 
     if (kDebugMode) {
       debugPrint(
@@ -906,8 +935,30 @@ class RecebimentoViewModel extends BaseViewModel {
       );
     }
 
-    rateio.qtdeLote = quantidade;
+    // ✅ ADICIONE: VALIDAÇÃO antes de atualizar
+    final erro = item.validarAtualizacaoRateio(
+      rateioIndex: rateioIndex,
+      novaQuantidade: quantidade,
+    );
+    if (erro != null) {
+      if (kDebugMode) {
+        debugPrint('❌ Validação falhou: $erro');
+      }
+      MessengerService.showError(erro);
+      return;
+    }
 
+    if (kDebugMode) {
+      debugPrint(
+        '[RecebimentoVM] 📝 Atualizando rateio index=$rateioIndex:\n'
+        '  Depósito: ${rateio.codDepos}\n'
+        '  Localização: ${rateio.codLocaliz}\n'
+        '  Lote: ${rateio.codLote}\n'
+        '  Qtde: ${rateio.qtdeLote} → $quantidade',
+      );
+    }
+
+    rateio.qtdeLote = quantidade;
     item.alteradoLocal = true;
 
     if (kDebugMode) {
@@ -944,14 +995,171 @@ class RecebimentoViewModel extends BaseViewModel {
       );
     }
 
-    item.rateios!.removeAt(rateioIndex);
+    _deletarRateioNoBackend(nrSequencia, rateio).then((sucesso) {
+      if (sucesso) {
+        item.rateios!.removeAt(rateioIndex);
 
-    item.alteradoLocal = true;
+        item.alteradoLocal = true;
 
-    notifyListeners();
+        notifyListeners();
+
+        if (kDebugMode) {
+          debugPrint('[RecebimentoVM] ✅ Rateio removido (marcado para sync)');
+        }
+      }
+    });
+  }
+  // ==========================================================================
+  // RATEIOS - Sincronização individual com backend
+  // ==========================================================================
+
+  /// Salva um rateio individual (quando usuário clica no botão salvar)
+  Future<bool> salvarRateioIndividual(
+    int nrSequencia,
+    int rateioIndex,
+  ) async {
+    if (_documentoSelecionado == null) return false;
+
+    final item = _documentoSelecionado!.itensDoc.firstWhere(
+      (item) => item.nrSequencia == nrSequencia,
+      orElse: () => throw StateError('Item não encontrado'),
+    );
+
+    if (!item.hasRateios || rateioIndex >= item.rateios!.length) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Índice de rateio inválido: $rateioIndex');
+      }
+      return false;
+    }
+
+    final rateio = item.rateios![rateioIndex];
 
     if (kDebugMode) {
-      debugPrint('[RecebimentoVM] ✅ Rateio removido (marcado para sync)');
+      debugPrint('💾 Salvando rateio individual:');
+      debugPrint('   Item: ${item.codItem}');
+      debugPrint('   Sequência: $nrSequencia');
+      debugPrint('   Rateio index: $rateioIndex');
+      debugPrint(
+        '   ${rateio.codDepos}-${rateio.codLocaliz}-${rateio.codLote}',
+      );
+    }
+
+    try {
+      final user = _session.currentUser;
+      if (user == null) return false;
+
+      final result = await _syncService.salvarRateio(
+        codEstabel: _documentoSelecionado!.codEstabel,
+        codEmitente: _documentoSelecionado!.codEmitente,
+        nroDocto: _documentoSelecionado!.nroDocto,
+        serieDocto: _documentoSelecionado!.serieDocto,
+        sequencia: nrSequencia,
+        rateio: rateio,
+        username: user.username,
+        password: user.password,
+      );
+
+      // ✅ Se chegou aqui, foi sucesso
+      if (kDebugMode) {
+        debugPrint('✅ Rateio salvo com sucesso no backend');
+      }
+
+      // Marca como não editado localmente
+      item.alteradoLocal = false;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Exceção ao salvar rateio: $e');
+      }
+      MessengerService.showError('Erro ao salvar rateio: $e');
+      return false;
+    }
+  }
+
+  /// Salva rateio no backend de forma assíncrona (após adicionar)
+  Future<void> _salvarRateioNoBackend(
+    int nrSequencia,
+    int rateioIndex,
+  ) async {
+    if (_documentoSelecionado == null) return;
+
+    final user = _session.currentUser;
+    if (user == null) return;
+
+    final item = _documentoSelecionado!.itensDoc.firstWhere(
+      (item) => item.nrSequencia == nrSequencia,
+      orElse: () => throw StateError('Item não encontrado'),
+    );
+
+    if (!item.hasRateios || rateioIndex >= item.rateios!.length) return;
+
+    final rateio = item.rateios![rateioIndex];
+
+    try {
+      final result = await _syncService.salvarRateio(
+        codEstabel: _documentoSelecionado!.codEstabel,
+        codEmitente: _documentoSelecionado!.codEmitente,
+        nroDocto: _documentoSelecionado!.nroDocto,
+        serieDocto: _documentoSelecionado!.serieDocto,
+        sequencia: nrSequencia,
+        rateio: rateio,
+        username: user.username,
+        password: user.password,
+      );
+
+      // ✅ Se chegou aqui, foi sucesso
+      if (kDebugMode) {
+        debugPrint('✅ Rateio salvo com sucesso no backend');
+      }
+
+      // Marca como não editado localmente
+      item.alteradoLocal = false;
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Exceção ao salvar rateio: $e');
+      }
+      MessengerService.showError('Erro ao salvar rateio: $e');
+    }
+  }
+
+  /// Deleta rateio no backend
+  Future<bool> _deletarRateioNoBackend(
+    int nrSequencia,
+    RatLoteModel rateio,
+  ) async {
+    if (_documentoSelecionado == null) return false;
+
+    final user = _session.currentUser;
+    if (user == null) return false;
+
+    try {
+      final result = await _syncService.removerRateio(
+        codEstabel: _documentoSelecionado!.codEstabel,
+        codEmitente: _documentoSelecionado!.codEmitente,
+        nroDocto: _documentoSelecionado!.nroDocto,
+        serieDocto: _documentoSelecionado!.serieDocto,
+        sequencia: nrSequencia,
+        codDepos: rateio.codDepos,
+        codLocaliz: rateio.codLocaliz,
+        codLote: rateio.codLote,
+        username: user.username,
+        password: user.password,
+      );
+
+      // ✅ Se chegou aqui, foi sucesso
+      if (kDebugMode) {
+        debugPrint('✅ Rateio deletado no backend');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Exceção ao deletar rateio: $e');
+      }
+      MessengerService.showError('Erro ao deletar rateio: $e');
+      return false;
     }
   }
 }

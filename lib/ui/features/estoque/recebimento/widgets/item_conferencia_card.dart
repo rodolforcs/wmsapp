@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/it_doc_fisico_model.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
+import 'package:wmsapp/shared/utils/format_number_utils.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/recebimento_view_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio_data_table.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/rateio_tile.dart';
@@ -41,9 +42,9 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
   void initState() {
     super.initState();
     _controller = TextEditingController(
-      text: widget.item.qtdeConferida > 0
-          ? widget.item.qtdeConferida.toStringAsFixed(2)
-          : '',
+      text: FormatNumeroUtils.formatarQuantidadeOrEmpty(
+        widget.item.qtdeConferida,
+      ),
     );
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
@@ -53,9 +54,14 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
   void didUpdateWidget(covariant ItemConferenciaCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.item.qtdeConferida != oldWidget.item.qtdeConferida) {
+      _controller.text = FormatNumeroUtils.formatarQuantidadeOrEmpty(
+        widget.item.qtdeConferida,
+      );
+      /*
       _controller.text = widget.item.qtdeConferida > 0
           ? widget.item.qtdeConferida.toStringAsFixed(2)
           : '';
+          */
     }
   }
 
@@ -69,12 +75,9 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
-      final value = _controller.text.isEmpty
-          ? 0.0
-          : double.tryParse(_controller.text) ?? 0.0;
+      final value = FormatNumeroUtils.parseQuantidade(_controller.text) ?? 0.0;
       widget.onQuantidadeChanged(value);
 
-      // ✅ NOVO: Sincroniza imediatamente
       final viewModel = context.read<RecebimentoViewModel>();
       viewModel.sincronizarAgora();
     }
@@ -178,7 +181,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       const SizedBox(height: 4),
 
                       Text(
-                        'Quantidade esperada: ${widget.item.qtdeItem.toStringAsFixed(2)} ${widget.item.unidMedida}',
+                        'Quantidade esperada: ${widget.item.qtdItemFormat} ${widget.item.unidMedida}',
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 14,
@@ -214,11 +217,18 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       decimal: true,
                     ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        FormatNumeroUtils.quantidadeRegex,
+                      ),
+                      /*
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*,?\d{0,4}'),
+                        
+                      )*/
                     ],
                     onEditingComplete: () => FocusScope.of(context).nextFocus(),
                     decoration: InputDecoration(
-                      hintText: '0.0000',
+                      hintText: FormatNumeroUtils.quantidadeHint,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -315,27 +325,10 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       index,
                       rateioAtualizado.qtdeLote,
                     );
-                    /*
-                    // Atualiza o rateio completo
-                    final rateios = List<RatLoteModel>.from(
-                      widget.item.rateios!,
-                    );
-                    rateios[index] = rateioAtualizado;
-
-                    // Notifica mudança de quantidade
-                    widget.onRateioQuantidadeChanged(
-                      rateioAtualizado.chaveRateio,
-                      rateioAtualizado.qtdeLote,
-                    );
-                    */
                   },
                   onRemover: widget.onRemoverRateio != null
                       ? (index) {
                           widget.onRemoverRateio!(index);
-                          /*
-                          final rateio = widget.item.rateios![index];
-                          widget.onRemoverRateio!(rateio.chaveRateio);
-                          */
                         }
                       : null,
                   onAdicionar: widget.onAdicionarRateio != null
@@ -615,14 +608,16 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                     decimal: true,
                   ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    FilteringTextInputFormatter.allow(
+                      FormatNumeroUtils.quantidadeRegex,
+                    ),
                   ],
                   decoration: InputDecoration(
                     labelText: 'Quantidade *',
-                    hintText: '0.0000',
+                    hintText: FormatNumeroUtils.quantidadeHint,
                     border: const OutlineInputBorder(),
                     helperText:
-                        'Restante para ratear: ${widget.item.qtdeNaoRateada.toStringAsFixed(4)}',
+                        'Restante para ratear: ${widget.item.qtdeNaoReateadaFomat}',
                     helperMaxLines: 2,
                   ),
                 ),
@@ -646,17 +641,6 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                   );
                   return;
                 }
-                /* 
-                if (localizController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Informe a localização'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
-                */
 
                 if (widget.item.controlaLote &&
                     loteController.text.trim().isEmpty) {
@@ -668,8 +652,9 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                   );
                   return;
                 }
-
-                final quantidade = double.tryParse(quantidadeController.text);
+                final quantidade = FormatNumeroUtils.parseQuantidade(
+                  quantidadeController.text,
+                );
 
                 if (quantidade == null || quantidade <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(

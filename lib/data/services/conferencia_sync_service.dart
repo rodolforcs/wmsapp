@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 
 import '../models/estoque/recebimento/docto_fisico_model.dart';
 import '../models/estoque/recebimento/it_doc_fisico_model.dart';
@@ -311,6 +312,139 @@ class ConferenciaSyncService {
 
   void dispose() {
     pararAutoSync();
+  }
+
+  /// Salva um rateio individual no backend
+  Future<void> salvarRateio({
+    required String codEstabel,
+    required int codEmitente,
+    required String nroDocto,
+    required String serieDocto,
+    required int sequencia,
+    required RatLoteModel rateio,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('📡 [SyncService] Salvando rateio:');
+        debugPrint('   Estabelecimento: $codEstabel');
+        debugPrint('   Emitente: $codEmitente');
+        debugPrint('   Documento: $nroDocto-$serieDocto');
+        debugPrint('   Sequência: $sequencia');
+        debugPrint('   Depósito: ${rateio.codDepos}');
+        debugPrint('   Localização: ${rateio.codLocaliz}');
+        debugPrint('   Lote: ${rateio.codLote}');
+        debugPrint('   Quantidade: ${rateio.qtdeLote}');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      // ⚠️ IMPORTANTE: Adiciona @DOMAIN ao username (igual ao sincronizarDocumento)
+      final userForAuth = '$username@${dotenv.env['DOMAIN']}';
+
+      final payload = {
+        'cod-estabel': codEstabel,
+        'cod-emitente': codEmitente,
+        'nro-docto': nroDocto,
+        'serie-docto': serieDocto,
+        'sequencia': sequencia,
+        'rateio': {
+          'cod-depos': rateio.codDepos,
+          'cod-localiz': rateio.codLocaliz,
+          'cod-lote': rateio.codLote,
+          'qtde-lote': rateio.qtdeLote,
+          if (rateio.dtValidade != null)
+            'dt-vali-lote': rateio.dtValidade!.toIso8601String(),
+        },
+      };
+
+      // ✅ HttpApiService já valida statusCode e lança exceção se erro
+      await _apiService.post(
+        '/api/estoque/recebimento/rateio',
+        body: payload,
+        username: userForAuth,
+        password: password,
+      );
+
+      if (kDebugMode) {
+        debugPrint('✅ [SyncService] Rateio salvo com sucesso');
+      }
+    } catch (e, stack) {
+      if (kDebugMode) {
+        debugPrint('❌ [SyncService] Erro ao salvar rateio: $e');
+        debugPrint('Stack: $stack');
+      }
+      // ✅ Re-lança exceção para ser tratada no ViewModel
+      rethrow;
+    }
+  }
+
+  /// Remove um rateio do backend
+  Future<void> removerRateio({
+    required String codEstabel,
+    required int codEmitente,
+    required String nroDocto,
+    required String serieDocto,
+    required int sequencia,
+    required String codDepos,
+    required String codLocaliz,
+    required String codLote,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('📡 [SyncService] Removendo rateio:');
+        debugPrint('   Documento: $nroDocto-$serieDocto');
+        debugPrint('   Sequência: $sequencia');
+        debugPrint('   Chave: $codDepos-$codLocaliz-$codLote');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      // ⚠️ IMPORTANTE: Adiciona @DOMAIN ao username
+      final userForAuth = '$username@${dotenv.env['DOMAIN']}';
+
+      // Monta payload para deletar
+      final queryParams = <String, String>{
+        'cod-estabel': codEstabel,
+        'cod-emitente': codEmitente.toString(),
+        'nro-docto': nroDocto,
+        'serie-docto': serieDocto,
+        'sequencia': sequencia.toString(),
+        'cod-depos': codDepos,
+        'cod-localiz': codLocaliz,
+        if (codLote.isNotEmpty) 'cod-lote': codLote,
+      };
+
+      // ✅ ADICIONE: Debug dos query params ANTES de enviar
+      if (kDebugMode) {
+        debugPrint('📦 Query Params sendo enviados:');
+        queryParams.forEach((key, value) {
+          debugPrint('   $key = $value');
+        });
+      }
+
+      // ✅ HttpApiService já valida statusCode e lança exceção se erro
+      await _apiService.delete(
+        'rep/v1/api_delete_rateio/',
+        queryParams: queryParams,
+        username: userForAuth,
+        password: password,
+      );
+
+      if (kDebugMode) {
+        debugPrint('✅ [SyncService] Rateio removido com sucesso');
+      }
+    } catch (e, stack) {
+      if (kDebugMode) {
+        debugPrint('❌ [SyncService] Erro ao remover rateio: $e');
+        debugPrint('Stack: $stack');
+      }
+      // ✅ Re-lança exceção para ser tratada no ViewModel
+      rethrow;
+    }
   }
 }
 

@@ -13,4 +13,12 @@ abstract class IApiService {
     String? username,
     String? password,
   });
+
+  /// Deleta dados ✅
+  Future<Map<String, dynamic>> delete(
+    String endpoint, {
+    Map<String, String>? queryParams, // Alguns DELETE precisam de body
+    String? username,
+    String? password,
+  });
 }

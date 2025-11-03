@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
+import 'package:wmsapp/shared/utils/format_number_utils.dart';
 
 // ============================================================================
 // RATEIO TILE - Linha de um rateio dentro do item
@@ -32,9 +33,7 @@ class _RateioTileState extends State<RateioTile> {
   void initState() {
     super.initState();
     _controller = TextEditingController(
-      text: widget.rateio.qtdeLote > 0
-          ? widget.rateio.qtdeLote.toStringAsFixed(2)
-          : '',
+      text: FormatNumeroUtils.formatarQuantidadeOrEmpty(widget.rateio.qtdeLote),
     );
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
@@ -44,9 +43,14 @@ class _RateioTileState extends State<RateioTile> {
   void didUpdateWidget(covariant RateioTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.rateio.qtdeLote != oldWidget.rateio.qtdeLote) {
+      _controller.text = FormatNumeroUtils.formatarQuantidade(
+        widget.rateio.qtdeLote,
+      );
+      /*
       _controller.text = widget.rateio.qtdeLote > 0
           ? widget.rateio.qtdeLote.toStringAsFixed(2)
           : '';
+          */
     }
   }
 

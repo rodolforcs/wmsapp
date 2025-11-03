@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 import 'package:wmsapp/data/models/item_model.dart';
+import 'package:wmsapp/shared/utils/format_number_utils.dart';
 
 // ============================================================================
 // IT DOC FISICO MODEL - Item do documento físico
@@ -178,7 +179,6 @@ class ItDocFisicoModel {
       hashState: hashState ?? this.hashState,
     );
   }
-
   // ==========================================================================
   // GETTERS - Acessa dados do ItemModel quando disponível
   // ==========================================================================
@@ -197,9 +197,16 @@ class ItDocFisicoModel {
 
   bool get foiConferido => qtdeConferida > 0;
 
-  String get qtdeConferidaFormat => qtdeConferida.toStringAsFixed(4);
-  String get qtdItemFormat => qtdeItem.toStringAsFixed(4);
-  String get somaTotalRateiosFormat => somaTotalRateios.toStringAsFixed(4);
+  String get qtdeConferidaFormat =>
+      FormatNumeroUtils.formatarQuantidade(qtdeConferida);
+
+  String get qtdItemFormat => FormatNumeroUtils.formatarQuantidade(qtdeItem);
+
+  String get somaTotalRateiosFormat =>
+      FormatNumeroUtils.formatarQuantidade(somaTotalRateios);
+
+  String get qtdeNaoReateadaFomat =>
+      FormatNumeroUtils.formatarQuantidade(qtdeNaoRateada);
 
   // ==========================================================================
   // VALIDAÇÃO 1: Quantidade Conferida vs Esperada
@@ -232,39 +239,102 @@ class ItDocFisicoModel {
     return rateios!.fold<double>(0.0, (sum, rat) => sum + rat.qtdeLote);
   }
 
+  /// Verifica se há divergência entre CONFERIDO e SOMA DOS RATEIOS
+  ///
+  /// ⚠️ REGRAS DE VALIDAÇÃO:
+  /// 1. Se não conferiu ainda → não valida
+  /// 2. Se não controla lote/endereço → não valida
+  /// 3. Se conferiu ZERO → não precisa ratear
+  /// 4. Se conferiu > 0 mas não tem rateios → DIVERGÊNCIA
+  /// 5. Se tem rateios mas soma ≠ conferido → DIVERGÊNCIA
+  bool get temDivergenciaRateio {
+    if (kDebugMode) {
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('🔍 [temDivergenciaRateio] Item: $codItem (seq=$nrSequencia)');
+      debugPrint('   foiConferido: $foiConferido');
+      debugPrint('   qtdeConferida: $qtdeConferida');
+      debugPrint('   controlaLote: $controlaLote');
+      debugPrint('   hasRateios: $hasRateios');
+      debugPrint('   somaTotalRateios: $somaTotalRateios');
+    }
+
+    // ✅ REGRA 1: Se não conferiu ainda, não valida rateio
+    if (!foiConferido) {
+      if (kDebugMode) debugPrint('   ❌ Resultado: false (não conferiu)');
+      return false;
+    }
+
+    // ✅ REGRA 2: Se conferiu ZERO, não precisa ratear
+    if (qtdeConferida == 0) {
+      if (kDebugMode) debugPrint('   ❌ Resultado: false (conferiu zero)');
+      return false;
+    }
+
+    // ✅ REGRA 3: Se conferiu > 0 mas não tem rateios → SEMPRE DIVERGÊNCIA
+    // (Rateio é obrigatório independente de controlar lote ou não)
+    if (qtdeConferida > 0 && !hasRateios) {
+      if (kDebugMode)
+        debugPrint('   ⚠️ Resultado: true (conferiu > 0 mas sem rateios)');
+      return true;
+    }
+
+    // ✅ REGRA 4: Valida se soma dos rateios bate com o conferido
+    final resultado = (somaTotalRateios - qtdeConferida).abs() >= 0.0001;
+    if (kDebugMode) {
+      debugPrint(
+        '   ${resultado ? "⚠️" : "❌"} Resultado: $resultado (diferença: ${(somaTotalRateios - qtdeConferida).abs()})',
+      );
+      debugPrint('═══════════════════════════════════════');
+    }
+    return resultado;
+  }
+
   /// Retorna quantidade ainda não rateada
   double get qtdeNaoRateada {
     return qtdeConferida - somaTotalRateios;
   }
 
-  /// Verifica se há divergência entre CONFERIDO e SOMA DOS RATEIOS
-  /// ⚠️ Só valida se qtdeConferida > 0
-  /// ⚠️ Só aplica se item controla lote ou endereço
-  bool get temDivergenciaRateio {
-    // ✅ REGRA 1: Se não conferiu ainda, não valida rateio
-    if (!foiConferido) return false;
-
-    // ✅ REGRA 2: Se não controla lote/endereço, não precisa ratear
-    if (!controlaLote && !controlaEndereco) return false;
-
-    // ✅ REGRA 3: Se conferiu mas não tem rateios, está divergente
-    if (!hasRateios) return true;
-
-    // ✅ REGRA 4: Valida se soma dos rateios bate com o conferido
-    return somaTotalRateios != qtdeConferida;
-  }
-
   /// Verifica se os rateios estão corretos (soma = conferido)
   /// ✅ OK quando soma dos rateios == quantidade conferida
   bool get rateiosCorretos {
-    // Se não conferiu, não tem como validar
-    if (!foiConferido) return false;
+    if (kDebugMode) {
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('🔍 [rateiosCorretos] Item: $codItem (seq=$nrSequencia)');
+      debugPrint('   foiConferido: $foiConferido');
+      debugPrint('   qtdeConferida: $qtdeConferida');
+      debugPrint('   controlaLote: $controlaLote');
+      debugPrint('   hasRateios: $hasRateios');
+      debugPrint('   somaTotalRateios: $somaTotalRateios');
+    }
 
-    // Se não controla lote/endereço, rateio é opcional
-    if (!controlaLote && !controlaEndereco) return true;
+    // Se não conferiu, não pode estar "correto" ainda
+    if (!foiConferido) {
+      if (kDebugMode) debugPrint('   ❌ Resultado: false (não conferiu)');
+      return false;
+    }
 
-    // Validação: soma rateios == conferido
-    return !temDivergenciaRateio;
+    // Se conferiu ZERO, não precisa ratear → OK
+    if (qtdeConferida == 0) {
+      if (kDebugMode) debugPrint('   ✅ Resultado: true (conferiu zero)');
+      return true;
+    }
+
+    // ✅ RATEIO É SEMPRE OBRIGATÓRIO: Se conferiu > 0, DEVE ter rateios
+    if (qtdeConferida > 0 && !hasRateios) {
+      if (kDebugMode)
+        debugPrint('   ❌ Resultado: false (conferiu > 0 mas sem rateios)');
+      return false;
+    }
+
+    // Validação: soma rateios deve bater com conferido (tolerância de 0.0001)
+    final resultado = (somaTotalRateios - qtdeConferida).abs() < 0.0001;
+    if (kDebugMode) {
+      debugPrint(
+        '   ${resultado ? "✅" : "❌"} Resultado: $resultado (diferença: ${(somaTotalRateios - qtdeConferida).abs()})',
+      );
+      debugPrint('═══════════════════════════════════════');
+    }
+    return resultado;
   }
 
   // ==========================================================================
@@ -315,6 +385,12 @@ class ItDocFisicoModel {
   /// Retorna mensagem de divergência de RATEIO
   String get mensagemDivergenciaRateio {
     if (!temDivergenciaRateio) return '';
+
+    // ✅ Mensagem específica se não tem rateios
+    if (!hasRateios && qtdeConferida > 0) {
+      return 'Falta ratear ${qtdeConferidaFormat}';
+    }
+
     return 'Conferido: ${qtdeConferida.toStringAsFixed(4)} | '
         'Soma rateios: ${somaTotalRateios.toStringAsFixed(4)}';
   }
@@ -372,4 +448,120 @@ class ItDocFisicoModel {
 
   @override
   int get hashCode => nrSequencia.hashCode;
+
+  // ==========================================================================
+  // VALIDAÇÕES DE RATEIO - Regras de Negócio
+  // ==========================================================================
+
+  /// Verifica se já existe um rateio com a mesma chave (dep-loc-lote)
+  ///
+  /// Regra: Não pode ter rateios duplicados com mesma combinação de:
+  /// - Depósito
+  /// - Localização
+  /// - Lote
+  bool existeRateioComChave(
+    String codDepos,
+    String codLocaliz,
+    String codLote,
+  ) {
+    if (!hasRateios) return false;
+
+    // Para itens SEM controle de lote, compara apenas dep-loc
+    if (!controlaLote) {
+      final chaveNova = '$codDepos-$codLocaliz'.toUpperCase();
+      return rateios!.any((rat) {
+        final chaveExistente = '${rat.codDepos}-${rat.codLocaliz}'
+            .toUpperCase();
+        return chaveExistente == chaveNova;
+      });
+    }
+
+    final chaveNova = '$codDepos-$codLocaliz-$codLote'.toUpperCase();
+
+    return rateios!.any((rat) => rat.chaveRateio.toUpperCase() == chaveNova);
+  }
+
+  /// Verifica se pode adicionar quantidade ao rateio sem ultrapassar qtdeConferida
+  ///
+  /// Regra: somaTotalRateios não pode ser maior que qtdeConferida
+  bool podeAdicionarQuantidade(double quantidade) {
+    if (!foiConferido) return false;
+
+    final novoTotal = somaTotalRateios + quantidade;
+    return novoTotal <= qtdeConferida;
+  }
+
+  /// Retorna quanto ainda pode ser rateado
+  double get quantidadeDisponivelParaRatear {
+    return qtdeConferida - somaTotalRateios;
+  }
+
+  /// Valida se pode adicionar um novo rateio
+  ///
+  /// Retorna String com erro ou null se válido
+  String? validarNovoRateio({
+    required String codDepos,
+    required String codLocaliz,
+    required String codLote,
+    required double quantidade,
+  }) {
+    // Validação 1: Item deve estar conferido
+    if (!foiConferido) {
+      return 'Item ainda não foi conferido';
+    }
+
+    // Validação 2: Quantidade deve ser maior que zero
+    if (quantidade <= 0) {
+      return 'Quantidade deve ser maior que zero';
+    }
+
+    // Validação 5: Lote é obrigatório SE item controla lote
+    if (controlaLote && codLote.trim().isEmpty) {
+      return 'Lote é obrigatório para este item';
+    }
+
+    // Validação 3: Não pode ter rateio duplicado
+    if (existeRateioComChave(codDepos, codLocaliz, codLote)) {
+      return controlaLote
+          ? 'Já existe um rateio com este depósito, localização e lote'
+          : 'Já existe um rateio com este depósito e localização';
+    }
+
+    // Validação 4: Soma não pode ultrapassar conferido
+    if (!podeAdicionarQuantidade(quantidade)) {
+      return 'Quantidade ultrapassa o disponível para ratear (${quantidadeDisponivelParaRatear.toStringAsFixed(4)})';
+    }
+
+    return null; // ✅ Válido
+  }
+
+  /// Valida se pode atualizar quantidade de um rateio existente
+  ///
+  /// Retorna String com erro ou null se válido
+  String? validarAtualizacaoRateio({
+    required int rateioIndex,
+    required double novaQuantidade,
+  }) {
+    if (!hasRateios || rateioIndex >= rateios!.length) {
+      return 'Rateio não encontrado';
+    }
+
+    // Validação 1: Quantidade deve ser maior que zero
+    if (novaQuantidade <= 0) {
+      return 'Quantidade deve ser maior que zero';
+    }
+
+    final rateioAtual = rateios![rateioIndex];
+    final quantidadeAtual = rateioAtual.qtdeLote;
+    final diferenca = novaQuantidade - quantidadeAtual;
+
+    // Validação 2: Nova soma não pode ultrapassar conferido
+    final novaSoma = somaTotalRateios + diferenca;
+    if (novaSoma > qtdeConferida) {
+      final disponivel = qtdeConferida - (somaTotalRateios - quantidadeAtual);
+      return 'Quantidade ultrapassa o disponível (máximo: ${disponivel.toStringAsFixed(4)})';
+    }
+
+    return null; // ✅ Válido
+  }
 }

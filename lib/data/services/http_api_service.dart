@@ -151,4 +151,66 @@ class HttpApiService implements IApiService {
       rethrow; // Re-lança a exceção para ser tratada pela camada do repositório/viewModel.
     }
   }
+
+  @override
+  Future<Map<String, dynamic>> delete(
+    String endpoint, {
+    Map<String, String>? queryParams,
+    String? username,
+    String? password,
+  }) async {
+    final url = Uri.parse(
+      '$_apiBaseUrl$endpoint',
+    ).replace(queryParameters: queryParams);
+
+    print('DELETE -> $url');
+
+    // ✅ ADICIONE: Debug dos query params
+    if (queryParams != null && queryParams.isNotEmpty) {
+      print('📋 Query Params:');
+      queryParams.forEach((key, value) {
+        print('   $key: $value');
+      });
+    }
+
+    try {
+      final headers = _createHeaders(username: username, password: password);
+
+      final response = await http.delete(
+        url,
+        headers: headers,
+      );
+
+      // ✅ ADICIONE: Debug da resposta
+      print('📥 Response Status: ${response.statusCode}');
+      if (response.body.isNotEmpty) {
+        print('📥 Response Body: ${response.body}');
+      }
+
+      final responseBody = response.body.isNotEmpty
+          ? json.decode(response.body)
+          : {};
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return responseBody;
+      } else {
+        String errorMessage = 'Erro desconhecido (${response.statusCode})';
+
+        if (responseBody is Map &&
+            responseBody.containsKey('RowErrors') &&
+            responseBody['RowErrors'] is List &&
+            (responseBody['RowErrors'] as List).isNotEmpty) {
+          final firstError = (responseBody['RowErrors'] as List).first;
+          if (firstError is Map && firstError.containsKey('ErrorDescription')) {
+            errorMessage = firstError['ErrorDescription'];
+          }
+        }
+
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('Erro na camada de rede (HttpApiService): $e');
+      rethrow;
+    }
+  }
 }

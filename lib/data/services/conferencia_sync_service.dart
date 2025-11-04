@@ -361,7 +361,7 @@ class ConferenciaSyncService {
 
       // ✅ HttpApiService já valida statusCode e lança exceção se erro
       await _apiService.post(
-        '/api/estoque/recebimento/rateio',
+        'rep/v1/api_update_rateio/',
         body: payload,
         username: userForAuth,
         password: password,
@@ -443,6 +443,88 @@ class ConferenciaSyncService {
         debugPrint('Stack: $stack');
       }
       // ✅ Re-lança exceção para ser tratada no ViewModel
+      rethrow;
+    }
+  }
+
+  /// Atualiza um rateio existente (permite alterar chave e quantidade)
+  Future<void> atualizarRateio({
+    required String codEstabel,
+    required int codEmitente,
+    required String nroDocto,
+    required String serieDocto,
+    required int sequencia,
+    required RatLoteModel rateio,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('📡 [SyncService] Atualizando rateio:');
+        debugPrint('   Documento: $nroDocto-$serieDocto');
+        debugPrint('   Sequência: $sequencia');
+
+        if (rateio.chaveMudou) {
+          debugPrint('   🔑 CHAVE ALTERADA:');
+          debugPrint('      OLD: ${rateio.chaveRateioOriginal}');
+          debugPrint('      NEW: ${rateio.chaveRateio}');
+        } else {
+          debugPrint('   📝 Chave mantida: ${rateio.chaveRateio}');
+        }
+
+        debugPrint('   Quantidade: ${rateio.qtdeLote}');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      final userForAuth = '$username@${dotenv.env['DOMAIN']}';
+
+      // ✅ Monta payload com chave-busca e dados-novos
+      final payload = {
+        'cod-estabel': codEstabel,
+        'cod-emitente': codEmitente,
+        'nro-docto': nroDocto,
+        'serie-docto': serieDocto,
+        'sequencia': sequencia,
+
+        // ✅ Chave de busca (valores originais)
+        'chave-busca': {
+          'cod-depos': rateio.codDeposOriginal,
+          'cod-localiz': rateio.codLocalizOriginal,
+          if (rateio.codLoteOriginal.isNotEmpty) 'lote': rateio.codLoteOriginal,
+        },
+
+        // ✅ Dados novos (valores atuais)
+        'dados-novos': {
+          'cod-depos': rateio.codDepos,
+          'cod-localiz': rateio.codLocaliz,
+          if (rateio.codLote.isNotEmpty) 'lote': rateio.codLote,
+          'quantidade': rateio.qtdeLote,
+          if (rateio.dtValidade != null)
+            'dt-vali-lote': rateio.dtValidade!.toIso8601String(),
+        },
+      };
+
+      if (kDebugMode) {
+        debugPrint('📦 Payload:');
+        debugPrint('   ${json.encode(payload)}');
+      }
+
+      await _apiService.post(
+        'rep/v1/api_update_rateio',
+        body: payload,
+        username: userForAuth,
+        password: password,
+      );
+
+      if (kDebugMode) {
+        debugPrint('✅ [SyncService] Rateio atualizado com sucesso');
+      }
+    } catch (e, stack) {
+      if (kDebugMode) {
+        debugPrint('❌ [SyncService] Erro ao atualizar rateio: $e');
+        debugPrint('Stack: $stack');
+      }
       rethrow;
     }
   }

@@ -9,6 +9,7 @@ import 'package:wmsapp/shared/utils/format_number_utils.dart';
 // ============================================================================
 
 class RateioDataTable extends StatefulWidget {
+  final int nrSequencia;
   final List<RatLoteModel> rateios;
   final Function(int index, RatLoteModel rateioAtualizado) onRateioChanged;
   final Function(int index)? onRemover;
@@ -18,6 +19,7 @@ class RateioDataTable extends StatefulWidget {
 
   const RateioDataTable({
     super.key,
+    required this.nrSequencia,
     required this.rateios,
     required this.onRateioChanged,
     this.onRemover,
@@ -296,10 +298,42 @@ class _RateioDataTableState extends State<RateioDataTable> {
                     color: Colors.green.shade700,
                     tooltip: 'Salvar alterações',
                     onPressed: () {
+                      // ✅ DEBUG: Verifica se o botão foi clicado
+                      debugPrint('═══════════════════════════════════════');
+                      debugPrint('🖱️ [UI] Botão SALVAR clicado!');
+                      debugPrint(
+                        '   Item sequencia: ${widget.nrSequencia}',
+                      );
+                      debugPrint('   Rateio index: $index');
+                      debugPrint('═══════════════════════════════════════');
+
+                      if (widget.onSalvar != null) {
+                        debugPrint(
+                          '✅ [UI] Chamando callback onSalvarRateio...',
+                        );
+                        widget.onSalvar!(index);
+                        // ✅ NOVO: Remove da lista de editados após callback completar
+                        if (mounted) {
+                          setState(() {
+                            _rateiosaEditados.remove(index);
+                          });
+
+                          if (kDebugMode) {
+                            debugPrint(
+                              '✅ [UI] Rateio $index removido da lista de editados',
+                            );
+                            debugPrint('   Lista atual: $_rateiosaEditados');
+                          }
+                        }
+                      } else {
+                        debugPrint('❌ [UI] Callback onSalvarRateio é NULL!');
+                      }
+                      /*
                       widget.onSalvar!(index);
                       setState(() {
                         _rateiosaEditados.remove(index);
                       });
+                      */
                     },
                     padding: const EdgeInsets.all(8),
                     constraints: const BoxConstraints(

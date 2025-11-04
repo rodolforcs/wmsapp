@@ -1,7 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:wmsapp/core/types/result.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
+import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 import 'package:wmsapp/data/services/i_api_service.dart';
 
 // ============================================================================
@@ -93,20 +96,6 @@ class RecebimentoRepository {
         'nro-docto': nroDocto,
         'serie-docto': serieDocto,
       };
-      /*
-      final body = {
-        'tt-doc-fisico': [
-          {
-            'cod-estabel': codEstabel,
-            'cod-emitente': codEmitente,
-            'nro-docto': nroDocto,
-            'serie-docto': serieDocto,
-          },
-        ],
-        'tt-it-doc-fisico': [],
-        'tt-rat-lote': [],
-      };
-      */
 
       print('[RecebimentoRepository] Buscando detalhes do documento...');
 
@@ -116,15 +105,6 @@ class RecebimentoRepository {
         username: userForAuth, // ← CORRIGIDO: com @DOMAIN
         password: password,
       );
-
-      /*
-      final response = await _apiService.post(
-        'rep/v1/api_post_recebimento',
-        body: body,
-        username: userForAuth,
-        password: password,
-      );
-      */
 
       // Navega até o documento dentro da estrutura do dataset
       final items = response['items'] as List;

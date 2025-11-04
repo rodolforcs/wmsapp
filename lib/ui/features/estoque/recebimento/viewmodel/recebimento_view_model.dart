@@ -1162,4 +1162,147 @@ class RecebimentoViewModel extends BaseViewModel {
       return false;
     }
   }
+
+  /// Atualiza rateio existente (botão "Salvar" na edição)
+  ///
+  /// FLUXO:
+  /// 1. Valida item e rateio
+  /// 2. Chama API de atualização (envia chave-busca + dados-novos)
+  /// 3. Atualiza valores originais após sucesso
+  /// 4. Remove flag de "alterado"
+  Future<bool> atualizarRateioExistente(
+    int nrSequencia,
+    int rateioIndex,
+  ) async {
+    // ========================================================================
+    // PASSO 1: Validações básicas
+    // ========================================================================
+
+    if (kDebugMode) {
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('📝 [RecebimentoVM] Atualizando rateio existente');
+      debugPrint('   Item sequência: $nrSequencia');
+      debugPrint('   Rateio índice: $rateioIndex');
+      debugPrint('═══════════════════════════════════════');
+    }
+
+    if (_documentoSelecionado == null) {
+      MessengerService.showError('Documento não selecionado');
+      return false;
+    }
+
+    final item = _documentoSelecionado!.itensDoc.firstWhere(
+      (item) => item.nrSequencia == nrSequencia,
+      orElse: () => throw StateError('Item não encontrado'),
+    );
+
+    if (!item.hasRateios || rateioIndex >= item.rateios!.length) {
+      MessengerService.showError('Rateio inválido');
+      return false;
+    }
+
+    final rateio = item.rateios![rateioIndex];
+    final user = _session.currentUser;
+
+    if (user == null) {
+      MessengerService.showError('Usuário não autenticado');
+      return false;
+    }
+
+    // ========================================================================
+    // PASSO 2: Debug - Estado atual do rateio
+    // ========================================================================
+
+    if (kDebugMode) {
+      debugPrint('📦 Estado do rateio:');
+      debugPrint('   Valores ATUAIS:');
+      debugPrint('     Depósito: ${rateio.codDepos}');
+      debugPrint('     Localização: ${rateio.codLocaliz}');
+      debugPrint('     Lote: ${rateio.codLote}');
+      debugPrint('     Quantidade: ${rateio.qtdeLote}');
+      debugPrint('   Valores ORIGINAIS (para busca no backend):');
+      debugPrint('     Depósito: ${rateio.codDeposOriginal}');
+      debugPrint('     Localização: ${rateio.codLocalizOriginal}');
+      debugPrint('     Lote: ${rateio.codLoteOriginal}');
+      debugPrint('   Chave mudou? ${rateio.chaveMudou}');
+    }
+
+    // ========================================================================
+    // PASSO 3: Chama API de atualização
+    // ========================================================================
+
+    try {
+      if (kDebugMode) {
+        debugPrint('📡 Chamando API de atualização...');
+      }
+
+      // ✅ Service vai enviar:
+      //    - chave-busca: usa valores ORIGINAIS
+      //    - dados-novos: usa valores ATUAIS
+      await _syncService.atualizarRateio(
+        codEstabel: _documentoSelecionado!.codEstabel,
+        codEmitente: _documentoSelecionado!.codEmitente,
+        nroDocto: _documentoSelecionado!.nroDocto,
+        serieDocto: _documentoSelecionado!.serieDocto,
+        sequencia: nrSequencia,
+        rateio: rateio,
+        username: user.username,
+        password: user.password,
+      );
+
+      // ========================================================================
+      // PASSO 4: Atualiza valores originais após sucesso
+      // ========================================================================
+
+      if (kDebugMode) {
+        debugPrint('✅ API retornou sucesso!');
+        debugPrint('🔄 Atualizando valores originais...');
+      }
+
+      // ✅ IMPORTANTE: Agora os valores ATUAIS viram os ORIGINAIS
+      //    Na próxima edição, vai buscar por esses valores
+      rateio.codDeposOriginal = rateio.codDepos;
+      rateio.codLocalizOriginal = rateio.codLocaliz;
+      rateio.codLoteOriginal = rateio.codLote;
+
+      if (kDebugMode) {
+        debugPrint('   Novo estado original:');
+        debugPrint('     Depósito: ${rateio.codDeposOriginal}');
+        debugPrint('     Localização: ${rateio.codLocalizOriginal}');
+        debugPrint('     Lote: ${rateio.codLoteOriginal}');
+      }
+
+      // ========================================================================
+      // PASSO 5: Remove flag de alterado e notifica UI
+      // ========================================================================
+
+      item.alteradoLocal = false;
+      notifyListeners();
+
+      MessengerService.showSuccess('Rateio atualizado com sucesso!');
+
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('✅ Processo concluído com sucesso!');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      return true;
+    } catch (e, stackTrace) {
+      // ========================================================================
+      // ERRO: Loga e mostra mensagem
+      // ========================================================================
+
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('❌ ERRO ao atualizar rateio');
+        debugPrint('   Erro: $e');
+        debugPrint('   Stack: $stackTrace');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      MessengerService.showError('Erro ao atualizar rateio: $e');
+      return false;
+    }
+  }
 }

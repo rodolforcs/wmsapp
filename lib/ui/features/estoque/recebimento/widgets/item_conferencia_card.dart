@@ -318,6 +318,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
               // TABLET: Usa DataTable
               if (isTablet) ...[
                 RateioDataTable(
+                  nrSequencia: widget.item.nrSequencia,
                   rateios: widget.item.rateios ?? [],
                   controlaLote: widget.item.controlaLote, // ← ADICIONE
                   onRateioChanged: (index, rateioAtualizado) {
@@ -336,7 +337,15 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                       : null,
 
                   // ✅ NOVO: Callback para salvar
-                  onSalvar: (index) => _salvarRateioIndividual(context, index),
+                  onSalvar: (index) async {
+                    final sucesso = await viewModel.atualizarRateioExistente(
+                      widget.item.nrSequencia,
+                      index,
+                    );
+                    if (sucesso) {
+                      setState(() {});
+                    }
+                  },
                 ),
               ]
               // MOBILE: Usa Cards
@@ -426,7 +435,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
 
     try {
       // TODO: Implementar método no ViewModel
-      // await viewModel.salvarRateioIndividual(widget.item.nrSequencia, index);
+      await viewModel.salvarRateioIndividual(widget.item.nrSequencia, index);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

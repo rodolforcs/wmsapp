@@ -19,6 +19,15 @@ class RatLoteModel {
   final bool isEditavel;
   final DateTime? dtValidade;
   final int sequencia;
+  // ✅ NOVOS CAMPOS: Chave original para busca no backend
+  /// Código do depósito original (quando carregado do backend)
+  String codDeposOriginal;
+
+  /// Código da localização original (quando carregado do backend)
+  String codLocalizOriginal;
+
+  /// Código do lote original (quando carregado do backend)
+  String codLoteOriginal;
 
   RatLoteModel({
     this.codDepos = '',
@@ -28,7 +37,12 @@ class RatLoteModel {
     this.isEditavel = false,
     this.dtValidade,
     this.sequencia = 0,
-  });
+    String? codDeposOriginal,
+    String? codLocalizOriginal,
+    String? codLoteOriginal,
+  }) : codDeposOriginal = codDeposOriginal ?? codDepos,
+       codLocalizOriginal = codLocalizOriginal ?? codLocaliz,
+       codLoteOriginal = codLoteOriginal ?? codLote;
 
   // ==========================================================================
   // CONSTRUTOR: From JSON (dados da API Progress)
@@ -36,6 +50,10 @@ class RatLoteModel {
 
   /// Cria RatLote a partir do JSON da API
   factory RatLoteModel.fromJson(Map<String, dynamic> json) {
+    final codDepos = json['cod-depos']?.toString() ?? '';
+    final codLocaliz = json['cod-localiz']?.toString() ?? '';
+    final codLote = json['lote']?.toString() ?? '';
+
     return RatLoteModel(
       codDepos: json['cod-depos']?.toString() ?? '',
       codLocaliz: json['cod-localiz']?.toString() ?? '',
@@ -50,6 +68,10 @@ class RatLoteModel {
       sequencia: json['sequencia'] is int
           ? json['sequencia']
           : int.tryParse(json['sequencia']?.toString() ?? '') ?? 0,
+      // ✅ Guarda valores originais para UPDATE posterior
+      codDeposOriginal: codDepos,
+      codLocalizOriginal: codLocaliz,
+      codLoteOriginal: codLote,
     );
   }
 
@@ -92,12 +114,32 @@ class RatLoteModel {
       isEditavel: isEditavel ?? this.isEditavel,
       dtValidade: dtValidade ?? this.dtValidade,
       sequencia: sequencia ?? this.sequencia,
+      // ✅ Mantém valores originais
+      codDeposOriginal: codDeposOriginal,
+      codLocalizOriginal: codLocalizOriginal,
+      codLoteOriginal: codLoteOriginal,
     );
   }
 
   // ==========================================================================
   // GETTERS - Propriedades calculadas
   // ==========================================================================
+
+  /// Verifica se a chave do rateio foi alterada (dep/loc/lote)
+  bool get chaveMudou {
+    return codDepos != codDeposOriginal ||
+        codLocaliz != codLocalizOriginal ||
+        codLote != codLoteOriginal;
+  }
+
+  /// Verifica se apenas a quantidade mudou (sem alterar chave)
+  bool get apenasQuantidadeMudou {
+    return !chaveMudou && qtdeLote != qtdeLote; // Comparar com valor salvo
+  }
+
+  /// Retorna chave original do rateio (para busca no backend)
+  String get chaveRateioOriginal =>
+      '$codDeposOriginal-$codLocalizOriginal-$codLoteOriginal';
 
   /// Chave única do rateio (para identificação)
   String get chaveRateio => '$codDepos-$codLocaliz-$codLote';
@@ -118,9 +160,16 @@ class RatLoteModel {
   // ==========================================================================
 
   @override
+  @override
   String toString() {
-    return 'RatLote(codDepos: $codDepos, codLocalizacao: $codLocaliz, '
-        'codLote: $codLote, qtdeLote: $qtdeLote, isEditavel: $isEditavel)';
+    return 'RatLoteModel('
+        'seq: $sequencia, '
+        'dep: $codDepos, '
+        'loc: $codLocaliz, '
+        'lote: $codLote, '
+        'qtd: $qtdeLote'
+        '${chaveMudou ? " [CHAVE ALTERADA]" : ""}'
+        ')';
   }
 
   @override

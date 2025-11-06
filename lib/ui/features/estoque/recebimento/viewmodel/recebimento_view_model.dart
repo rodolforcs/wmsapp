@@ -1055,6 +1055,7 @@ class RecebimentoViewModel extends BaseViewModel {
         serieDocto: _documentoSelecionado!.serieDocto,
         sequencia: nrSequencia,
         rateio: rateio,
+        itCodigo: item.codItem,
         username: user.username,
         password: user.password,
       );
@@ -1097,6 +1098,19 @@ class RecebimentoViewModel extends BaseViewModel {
 
     final rateio = item.rateios![rateioIndex];
 
+    if (kDebugMode) {
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('📡 [RecebimentoVM] Salvando rateio novo no backend');
+      debugPrint('   Item: ${item.codItem}');
+      debugPrint('   Sequência: $nrSequencia');
+      debugPrint('   Rateio index: $rateioIndex');
+      debugPrint('   Depósito: ${rateio.codDepos}');
+      debugPrint('   Localização: ${rateio.codLocaliz}');
+      debugPrint('   Lote: ${rateio.codLote}');
+      debugPrint('   Quantidade: ${rateio.qtdeLote}');
+      debugPrint('═══════════════════════════════════════');
+    }
+
     try {
       final result = await _syncService.salvarRateio(
         codEstabel: _documentoSelecionado!.codEstabel,
@@ -1105,23 +1119,61 @@ class RecebimentoViewModel extends BaseViewModel {
         serieDocto: _documentoSelecionado!.serieDocto,
         sequencia: nrSequencia,
         rateio: rateio,
+        itCodigo: item.codItem,
         username: user.username,
         password: user.password,
       );
 
-      // ✅ Se chegou aqui, foi sucesso
       if (kDebugMode) {
-        debugPrint('✅ Rateio salvo com sucesso no backend');
+        debugPrint('✅ Backend retornou sucesso!');
+        debugPrint('🔄 Definindo valores originais...');
       }
+
+      // ✅ IMPORTANTE: Agora o rateio está no backend
+      //    Define valores originais = valores atuais
+      rateio.codDeposOriginal = rateio.codDepos;
+      rateio.codLocalizOriginal = rateio.codLocaliz;
+      rateio.codLoteOriginal = rateio.codLote;
 
       // Marca como não editado localmente
       item.alteradoLocal = false;
       notifyListeners();
-    } catch (e) {
+
       if (kDebugMode) {
-        debugPrint('❌ Exceção ao salvar rateio: $e');
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('✅ Rateio salvo e sincronizado com sucesso!');
+        debugPrint('═══════════════════════════════════════');
       }
+    } catch (e, stackTrace) {
+      // ========================================================================
+      // ERRO: Rollback - Remove da lista e mostra mensagem
+      // ========================================================================
+
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('❌ ERRO ao salvar rateio no backend');
+        debugPrint('   Erro: $e');
+        debugPrint('   Stack: $stackTrace');
+        debugPrint('🔄 Fazendo rollback - removendo da lista...');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      // ✅ Remove da lista local (rollback)
+      item.rateios!.removeAt(rateioIndex);
+
+      // Recalcula quantidade conferida
+      item.qtdeConferida = item.hasRateios
+          ? item.rateios!.fold<double>(0.0, (sum, rat) => sum + rat.qtdeLote)
+          : 0.0;
+
+      item.alteradoLocal = item.hasRateios;
+      notifyListeners();
+
       MessengerService.showError('Erro ao salvar rateio: $e');
+
+      if (kDebugMode) {
+        debugPrint('✅ Rollback concluído - rateio removido da lista');
+      }
     }
   }
 

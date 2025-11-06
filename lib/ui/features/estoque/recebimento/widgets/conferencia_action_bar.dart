@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class ConferenciaActionBar extends StatelessWidget {
   final bool isTablet;
   final bool todosConferidos;
-  final bool temDivergencias;
+  final bool todosRateiosCorretos;
   final VoidCallback? onVoltar;
   final VoidCallback? onFinalizar;
 
@@ -12,13 +12,15 @@ class ConferenciaActionBar extends StatelessWidget {
     super.key,
     required this.isTablet,
     required this.todosConferidos,
-    required this.temDivergencias,
+    required this.todosRateiosCorretos,
     this.onVoltar,
     this.onFinalizar,
   });
 
   @override
   Widget build(BuildContext context) {
+    final podeFinalizar = todosConferidos && todosRateiosCorretos;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -52,18 +54,16 @@ class ConferenciaActionBar extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: todosConferidos ? onFinalizar : null,
+                    onPressed: podeFinalizar ? onFinalizar : null,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: temDivergencias
-                          ? Colors.orange
-                          : Colors.green,
+                      backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      disabledForegroundColor: Colors.grey.shade600,
                     ),
                     child: Text(
-                      temDivergencias
-                          ? 'Finalizar com Divergência'
-                          : 'Finalizar Conferência',
+                      'Finalizar Conferência',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -73,11 +73,11 @@ class ConferenciaActionBar extends StatelessWidget {
                 ),
               ],
             ),
-            if (!todosConferidos)
+            if (!podeFinalizar)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Confira todos os itens para finalizar',
+                  _getMensagemBloqueio(todosConferidos, todosRateiosCorretos),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
@@ -89,5 +89,18 @@ class ConferenciaActionBar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getMensagemBloqueio(bool conferidos, bool rateiosOk) {
+    if (!conferidos && !rateiosOk) {
+      return 'Confira todos os itens e ajuste os rateios para finalizar';
+    }
+    if (!conferidos) {
+      return 'Confira todos os itens para finalizar';
+    }
+    if (!rateiosOk) {
+      return 'Ajuste os rateios para finalizar - soma deve bater com conferido';
+    }
+    return '';
   }
 }

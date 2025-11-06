@@ -89,7 +89,7 @@ class _ConferenciaViewState extends State<ConferenciaView> {
           ConferenciaActionBar(
             isTablet: widget.isTablet,
             todosConferidos: documento.todosItensConferidos,
-            temDivergencias: documento.temDivergencias,
+            todosRateiosCorretos: documento.todosRateiosCorretos,
             onVoltar: widget.isTablet
                 ? null
                 : () => viewModel.voltarParaLista(),
@@ -142,81 +142,12 @@ class _ConferenciaViewState extends State<ConferenciaView> {
     RecebimentoViewModel viewModel,
     DoctoFisicoModel documento,
   ) async {
-    final temDivergencias = documento.temDivergencias;
+    // Mostra dialog de confirmação
+    final confirmar = await _mostrarDialogConfirmacao(context, documento);
 
-    final success = temDivergencias
-        ? await _confirmarFinalizacaoComDivergencia(
-            context,
-            viewModel,
-            documento,
-          )
-        : await viewModel.finalizarConferencia();
-
-    if (success && context.mounted && !widget.isTablet) {
-      Navigator.of(context).pop();
+    if (confirmar == true && context.mounted) {
+      await _executarFinalizacao(context, viewModel);
     }
-  }
-
-  Future<bool> _confirmarFinalizacaoComDivergencia(
-    BuildContext context,
-    RecebimentoViewModel viewModel,
-    DoctoFisicoModel documento,
-  ) async {
-    final divergencias = documento.itensComDivergencia;
-
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.orange.shade700,
-            ),
-            const SizedBox(width: 12),
-            const Text('Confirmar Divergências'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Foram encontradas divergências nos seguintes itens:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              ...divergencias.map((item) => _buildDivergenciaItem(item)),
-              const SizedBox(height: 16),
-              const Text(
-                'Deseja finalizar a conferência registrando estas divergências?',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmar == true) {
-      return await viewModel.finalizarComDivergencia();
-    }
-
-    return false;
   }
 
   Widget _buildDivergenciaItem(ItDocFisicoModel item) {
@@ -250,6 +181,270 @@ class _ConferenciaViewState extends State<ConferenciaView> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _mostrarDialogConfirmacao(
+    BuildContext context,
+    DoctoFisicoModel documento,
+  ) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 28,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Finalizar Conferência?',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Tudo conferido!',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Todos os itens foram conferidos e os rateios estão corretos.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Esta ação irá:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildCheckItem('Atualizar o documento como "Finalizado"'),
+              _buildCheckItem('Gerar movimentação de estoque no ERP'),
+              _buildCheckItem('Registrar a conferência no sistema'),
+              _buildCheckItem('Atualizar saldos de estoque'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Esta ação não poderá ser desfeita',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.blue.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+            ),
+            child: const Text(
+              'Confirmar Finalização',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _executarFinalizacao(
+    BuildContext context,
+    RecebimentoViewModel viewModel,
+  ) async {
+    // Mostra loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: Center(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Finalizando conferência...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Atualizando sistema e gerando movimentação',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // ✅ Só chama finalizarConferencia (sem divergência)
+      final sucesso = await viewModel.finalizarConferencia();
+
+      if (context.mounted) {
+        // Fecha loading
+        Navigator.of(context).pop();
+
+        if (sucesso) {
+          // Mostra mensagem de sucesso
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Conferência finalizada com sucesso!'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+
+          // Volta para lista se não for tablet
+          if (!widget.isTablet) {
+            Navigator.of(context).pop();
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        // Fecha loading
+        Navigator.of(context).pop();
+
+        // Mostra erro
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Erro ao finalizar: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildCheckItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.check_circle,
+            color: Colors.green,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14),
             ),
           ),
         ],

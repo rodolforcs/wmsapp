@@ -275,34 +275,108 @@ class ConferenciaSyncService {
     bool comDivergencia = false,
   }) async {
     try {
-      print('🏁 Finalizando conferência...');
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('🏁 [SyncService] Finalizando conferência...');
+        debugPrint(
+          '   Documento: ${documento.nroDocto}-${documento.serieDocto}',
+        );
+        debugPrint('   Com divergência: $comDivergencia');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      final userForAuth = '$username@${dotenv.env['DOMAIN']}';
+
+      final payload = {
+        'cod-estabel': documento.codEstabel,
+        'cod-emitente': documento.codEmitente,
+        'nro-docto': documento.nroDocto,
+        'serie-docto': documento.serieDocto,
+        'com-divergencia': comDivergencia,
+        'dt-conferencia': DateTime.now().toIso8601String(),
+      };
+
+      if (kDebugMode) {
+        debugPrint('📦 Payload:');
+        debugPrint(json.encode(payload));
+      }
+
+      if (kDebugMode) {
+        debugPrint('📦 Payload:');
+        debugPrint(json.encode(payload));
+      }
 
       final response = await _apiService.post(
-        'rep/v1/api_post_sync_recebimento/',
-        body: {
-          'cod-estabel': documento.codEstabel,
-          'cod-emitente': documento.codEmitente,
-          'nro-docto': documento.nroDocto,
-          'serie-docto': documento.serieDocto,
-          'itensDoc': documento.itensDoc.map((item) => item.toJson()).toList(),
-          'com-divergencia': comDivergencia,
-          'dt-conferencia': DateTime.now().toIso8601String(),
-        },
-        username: username,
+        'rep/v1/api_finalizar_conferencia/',
+        body: payload,
+        username: userForAuth,
         password: password,
       );
 
-      if (response['success'] != true) {
-        throw Exception(
-          response['message'] ?? 'Erro ao finalizar conferência',
-        );
+      if (kDebugMode) {
+        debugPrint('📥 Response:');
+        debugPrint(json.encode(response));
       }
 
-      print('✅ Conferência finalizada!');
-      return true;
+      // ✅ CORREÇÃO: Verifica items[] ao invés de response direto
+      if (response['items'] != null && response['items'] is List) {
+        final items = response['items'] as List;
+
+        if (items.isNotEmpty) {
+          final firstItem = items[0] as Map<String, dynamic>;
+
+          // Verifica se há erro
+          if (firstItem['success'] == false) {
+            final errorMessage =
+                firstItem['messages'] ??
+                firstItem['message'] ??
+                'Erro ao finalizar conferência';
+
+            if (kDebugMode) {
+              debugPrint('❌ [SyncService] Backend retornou erro:');
+              debugPrint('   Mensagem: $errorMessage');
+              debugPrint('   Tipo: ${firstItem['error-type']}');
+              debugPrint('═══════════════════════════════════════');
+            }
+
+            throw Exception(errorMessage);
+          }
+
+          // Sucesso
+          if (firstItem['success'] == true) {
+            if (kDebugMode) {
+              debugPrint('✅ [SyncService] Conferência finalizada com sucesso!');
+              debugPrint('═══════════════════════════════════════');
+            }
+            return true;
+          }
+        }
+      }
+
+      // ✅ Fallback: se não encontrou success, verifica estrutura antiga
+      if (response['success'] == true) {
+        if (kDebugMode) {
+          debugPrint('✅ [SyncService] Conferência finalizada com sucesso!');
+          debugPrint('═══════════════════════════════════════');
+        }
+        return true;
+      }
+
+      // Se chegou aqui, algo deu errado
+      throw Exception(
+        response['message'] ??
+            response['messages'] ??
+            'Erro desconhecido ao finalizar conferência',
+      );
     } catch (e) {
-      print('❌ Erro ao finalizar: $e');
-      throw Exception('Erro ao finalizar conferência: ${e.toString()}');
+      if (kDebugMode) {
+        debugPrint('═══════════════════════════════════════');
+        debugPrint('❌ [SyncService] Erro ao finalizar conferência');
+        debugPrint('   Erro: $e');
+        debugPrint('   Stack: $StackTrace');
+        debugPrint('═══════════════════════════════════════');
+      }
+      rethrow;
     }
   }
 
@@ -322,6 +396,7 @@ class ConferenciaSyncService {
     required String serieDocto,
     required int sequencia,
     required RatLoteModel rateio,
+    required String itCodigo,
     required String username,
     required String password,
   }) async {
@@ -349,6 +424,7 @@ class ConferenciaSyncService {
         'nro-docto': nroDocto,
         'serie-docto': serieDocto,
         'sequencia': sequencia,
+        'it-codigo': itCodigo,
         'rateio': {
           'cod-depos': rateio.codDepos,
           'cod-localiz': rateio.codLocaliz,
@@ -359,9 +435,14 @@ class ConferenciaSyncService {
         },
       };
 
+      if (kDebugMode) {
+        debugPrint('📦 Payload:');
+        debugPrint(json.encode(payload));
+      }
+
       // ✅ HttpApiService já valida statusCode e lança exceção se erro
       await _apiService.post(
-        'rep/v1/api_update_rateio/',
+        'rep/v1/api_create_rateio/',
         body: payload,
         username: userForAuth,
         password: password,

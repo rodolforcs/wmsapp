@@ -57,11 +57,6 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
       _controller.text = FormatNumeroUtils.formatarQuantidadeOrEmpty(
         widget.item.qtdeConferida,
       );
-      /*
-      _controller.text = widget.item.qtdeConferida > 0
-          ? widget.item.qtdeConferida.toStringAsFixed(2)
-          : '';
-          */
     }
   }
 
@@ -140,8 +135,44 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      if (widget.item.temNarrativa) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.amber.shade200,
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 16,
+                                color: Colors.amber.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _limparNarrativa(widget.item.narrativa!),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade800,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
 
+                      const SizedBox(height: 8),
                       // Linha com Pedido e Ordem
                       Row(
                         children: [
@@ -178,6 +209,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                           ],
                         ],
                       ),
+                      /*
                       const SizedBox(height: 4),
 
                       Text(
@@ -187,6 +219,7 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                           fontSize: 14,
                         ),
                       ),
+                      */
                     ],
                   ),
                 ),
@@ -404,6 +437,16 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
         ],
       ),
     );
+  }
+
+  /// Limpa a narrativa removendo espaços extras e quebras de linha
+  String _limparNarrativa(String narrativa) {
+    return narrativa
+        .trim() // Remove espaços no início/fim
+        .replaceAll(RegExp(r'\s+'), ' ') // Múltiplos espaços → 1 espaço
+        .replaceAll(RegExp(r'\n+'), ' ') // Quebras de linha → espaço
+        .replaceAll(RegExp(r'\r+'), ' ') // Carriage return → espaço
+        .replaceAll(RegExp(r'\t+'), ' '); // Tabs → espaço
   }
 
   Widget _buildStatusIcon() {

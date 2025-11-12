@@ -41,6 +41,7 @@ class ItDocFisicoModel {
 
   final String numPedido;
   final String numeroOrdem;
+  final String? narrativa;
   //bool foiConferido;
   bool alteradoLocal;
   final String hashState;
@@ -59,6 +60,7 @@ class ItDocFisicoModel {
     required this.versao,
     this.dataUltAlt,
     this.usuarioUltAlt = '',
+    this.narrativa,
   });
 
   // ==========================================================================
@@ -123,6 +125,7 @@ class ItDocFisicoModel {
       itemCadastro: itemCadastro,
       numPedido: json['num-pedido']?.toString() ?? '',
       numeroOrdem: json['numero-ordem']?.toString() ?? '',
+      narrativa: json['narrativa'] as String?,
       versao: json['versao'] as int? ?? 0,
       alteradoLocal: false,
       hashState: json['hash-state'] ?? '',
@@ -143,6 +146,7 @@ class ItDocFisicoModel {
       'versao': versao,
       'alterado-local': alteradoLocal,
       'hash-state': hashState,
+      'narrativa': narrativa,
       'rateios': rateios?.map((rat) => rat.toJson()).toList(),
     };
   }
@@ -161,6 +165,7 @@ class ItDocFisicoModel {
     ItemModel? itemCadastro,
     String? numPedido,
     String? numeroOrdem,
+    String? narrativa,
     int? versao,
     bool? alteradoLocal,
     String? hashState,
@@ -174,6 +179,7 @@ class ItDocFisicoModel {
       itemCadastro: itemCadastro ?? this.itemCadastro,
       numPedido: numPedido ?? this.numPedido,
       numeroOrdem: numeroOrdem ?? this.numeroOrdem,
+      narrativa: narrativa ?? this.narrativa,
       versao: versao ?? this.versao,
       alteradoLocal: alteradoLocal ?? this.alteradoLocal,
       hashState: hashState ?? this.hashState,
@@ -207,6 +213,8 @@ class ItDocFisicoModel {
 
   String get qtdeNaoReateadaFomat =>
       FormatNumeroUtils.formatarQuantidade(qtdeNaoRateada);
+
+  bool get temNarrativa => narrativa != null && narrativa!.isNotEmpty;
 
   // ==========================================================================
   // VALIDAÇÃO 1: Quantidade Conferida vs Esperada

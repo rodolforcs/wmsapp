@@ -234,8 +234,45 @@ class _ContentWidget extends StatelessWidget {
                 documento,
               );
             },
+            // ✅ NOVO: Callback para abrir checklist
+            onCheckListTap: () {
+              _abrirChecklist(context, documento);
+            },
           );
         },
+      ),
+    );
+  }
+  // ==========================================================================
+  // ✅ NOVO: MÉTODO PARA ABRIR CHECKLIST
+  // ==========================================================================
+
+  void _abrirChecklist(BuildContext context, dynamic documento) {
+    // TODO: Implementar navegação para tela de checklist
+    // Por enquanto, mostra um SnackBar como placeholder
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.checklist, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Checklist - NF ${documento.nroDocto}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
       ),
     );
   }

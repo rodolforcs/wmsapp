@@ -11,12 +11,14 @@ class DoctoFisicoCard extends StatelessWidget {
   final DoctoFisicoModel documento;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onCheckListTap;
 
   const DoctoFisicoCard({
     super.key,
     required this.documento,
     required this.isSelected,
     required this.onTap,
+    this.onCheckListTap,
   });
 
   @override
@@ -87,6 +89,14 @@ class DoctoFisicoCard extends StatelessWidget {
                       ],
                     ),
                   ),
+
+                  if (onCheckListTap != null) ...[
+                    const SizedBox(width: 8),
+                    _buildChecklistButton(context),
+                  ],
+
+                  const SizedBox(width: 8),
+
                   // Badge de status
                   StatusBadge(
                     status: StatusDocumento.fromString(documento.status),
@@ -166,6 +176,45 @@ class DoctoFisicoCard extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================================
+  // ✅ NOVO: BOTÃO DE CHECKLIST
+  // ==========================================================================
+
+  Widget _buildChecklistButton(BuildContext context) {
+    // TODO: Futuramente, verificar se checklist está completo
+    final checklistCompleto = false; // Placeholder
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onCheckListTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: checklistCompleto
+                ? Colors.green.shade50
+                : Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: checklistCompleto
+                  ? Colors.green.shade300
+                  : Colors.blue.shade200,
+              width: 1.5,
+            ),
+          ),
+          child: Icon(
+            checklistCompleto ? Icons.check_circle : Icons.checklist,
+            size: 20,
+            color: checklistCompleto
+                ? Colors.green.shade700
+                : Colors.blue.shade700,
           ),
         ),
       ),

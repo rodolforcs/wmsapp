@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
 import 'package:wmsapp/shared/enums/status_documento.dart';
+import 'package:wmsapp/shared/widgets/checklist_button.dart';
 import 'package:wmsapp/shared/widgets/status_badge.dart';
 
 // ============================================================================
@@ -12,6 +13,7 @@ class DoctoFisicoCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback? onCheckListTap;
+  final bool checklistCompleto;
 
   const DoctoFisicoCard({
     super.key,
@@ -19,6 +21,7 @@ class DoctoFisicoCard extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     this.onCheckListTap,
+    this.checklistCompleto = false,
   });
 
   @override
@@ -45,6 +48,7 @@ class DoctoFisicoCard extends StatelessWidget {
             children: [
               // Linha 1: Número NF + Série + Status
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Número da NF
                   Expanded(
@@ -56,11 +60,13 @@ class DoctoFisicoCard extends StatelessWidget {
                           color: Colors.grey[600],
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'NF ${documento.nroDocto}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Text(
+                            'NF ${documento.nroDocto}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -92,7 +98,10 @@ class DoctoFisicoCard extends StatelessWidget {
 
                   if (onCheckListTap != null) ...[
                     const SizedBox(width: 8),
-                    _buildChecklistButton(context),
+                    ChecklistButton(
+                      isCompleto: checklistCompleto,
+                      onTap: onCheckListTap,
+                    ),
                   ],
 
                   const SizedBox(width: 8),
@@ -101,7 +110,6 @@ class DoctoFisicoCard extends StatelessWidget {
                   StatusBadge(
                     status: StatusDocumento.fromString(documento.status),
                   ),
-                  //_buildStatusBadge(documento.status),
                 ],
               ),
 
@@ -176,45 +184,6 @@ class DoctoFisicoCard extends StatelessWidget {
                 ],
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ==========================================================================
-  // ✅ NOVO: BOTÃO DE CHECKLIST
-  // ==========================================================================
-
-  Widget _buildChecklistButton(BuildContext context) {
-    // TODO: Futuramente, verificar se checklist está completo
-    final checklistCompleto = false; // Placeholder
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onCheckListTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: checklistCompleto
-                ? Colors.green.shade50
-                : Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: checklistCompleto
-                  ? Colors.green.shade300
-                  : Colors.blue.shade200,
-              width: 1.5,
-            ),
-          ),
-          child: Icon(
-            checklistCompleto ? Icons.check_circle : Icons.checklist,
-            size: 20,
-            color: checklistCompleto
-                ? Colors.green.shade700
-                : Colors.blue.shade700,
           ),
         ),
       ),

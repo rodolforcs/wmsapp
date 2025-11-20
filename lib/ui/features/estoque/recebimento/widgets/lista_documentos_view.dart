@@ -229,6 +229,7 @@ class _ContentWidget extends StatelessWidget {
           return DoctoFisicoCard(
             documento: documento,
             isSelected: isSelected,
+            checklistCompleto: false,
             onTap: () {
               context.read<RecebimentoViewModel>().selecionarDocumento(
                 documento,

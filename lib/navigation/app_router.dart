@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wmsapp/core/viewmodel/session_view_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/view/recebimento_screen.dart';
+import 'package:wmsapp/ui/features/estoque/view/checklist_screen.dart';
 import 'package:wmsapp/ui/features/estoque/view/estoque_screen.dart';
 import 'package:wmsapp/ui/features/login/view/login_screen.dart';
 import 'package:wmsapp/ui/features/menu/view/menu_screen.dart';
@@ -15,6 +16,7 @@ class AppRouter {
   static final menu = '/menu';
   static final estoque = '/estoque';
   static final recebimento = '/recebimento';
+  static final checklist = '/checklist';
 
   late final router = GoRouter(
     // O refreshListenable faz o router "ouvir" as mudanças na SessionViewModel.
@@ -41,6 +43,21 @@ class AppRouter {
         path: AppRouter.recebimento,
         name: AppRouter.recebimento,
         builder: (context, state) => const RecebimentoScreen(),
+      ),
+      GoRoute(
+        path: AppRouter.checklist,
+        name: AppRouter.checklist,
+        builder: (context, state) {
+          // Recebe parâmetros via extra
+          final params = state.extra as Map<String, dynamic>;
+
+          return ChecklistScreen(
+            codEstabel: params['codEstabel'] as String,
+            codEmitente: params['codEmitente'] as int,
+            nroDocto: params['nroDocto'] as String,
+            serieDocto: params['serieDocto'] as String,
+          );
+        },
       ),
     ],
     redirect: (BuildContext context, GoRouterState state) {

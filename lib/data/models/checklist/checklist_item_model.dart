@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'checklist_resposta_model.dart';
 
 class ChecklistItemModel {
@@ -53,11 +55,11 @@ class ChecklistItemModel {
       sequenciaItem: json['sequencia-item'] as int? ?? 0,
       desItem: json['des-item'] as String? ?? '',
       tipoResposta: json['tipo-resposta'] as String? ?? 'TEXT',
-      opcoesSelect: json['opcoes-select'] as String? ?? '[]',
+      opcoesSelect: json['opcoes-select']?.toString() ?? '[]',
       obrigatorio: json['obrigatorio'] as bool? ?? false,
       permiteObs: json['permite-obs'] as bool? ?? false,
       exigeFoto: json['exige-foto'] as bool? ?? false,
-      tooltip: json['tooltip'] as String? ?? '',
+      tooltip: json['toolti'] as String? ?? '',
       ordemExibicao: json['ordem-exibicao'] as int? ?? 0,
       resposta: resposta,
     );
@@ -78,7 +80,7 @@ class ChecklistItemModel {
       'obrigatorio': obrigatorio,
       'permite-obs': permiteObs,
       'exige-foto': exigeFoto,
-      'tooltip': tooltip,
+      'toolti': tooltip,
       'ordem-exibicao': ordemExibicao,
       if (resposta != null) 'tt-item-resposta': [resposta!.toJson()],
     };
@@ -94,6 +96,19 @@ class ChecklistItemModel {
 
   bool get temObservacao => resposta?.observacao?.isNotEmpty ?? false;
 
+  List<String> get opcoes {
+    try {
+      final decoded = jsonDecode(opcoesSelect);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      return ['OK', 'NOK', 'N/A']; // fallback
+    }
+  }
+
+  /*
   /// Parse das opções do SELECT (JSON string para List)
   List<String> get opcoes {
     try {
@@ -109,7 +124,7 @@ class ChecklistItemModel {
       return ['OK', 'NOK', 'N/A']; // Fallback padrão
     }
   }
-
+  */
   /// Texto da resposta para exibição
   String get respostaTexto {
     if (resposta == null) return '';

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:wmsapp/data/models/checklist/checklist_categoria_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/checklist_item_tile.dart';
 
-/// Card expansível de categoria do checklist
 class ChecklistCategoriaCard extends StatefulWidget {
   final ChecklistCategoriaModel categoria;
   final int codChecklist;
@@ -20,14 +19,14 @@ class ChecklistCategoriaCard extends StatefulWidget {
 }
 
 class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
-  bool _isExpanded = true; // Inicia expandido
+  bool _isExpanded = true;
 
   @override
   Widget build(BuildContext context) {
     final categoria = widget.categoria;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16), // ✅ Margin só embaixo
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -38,18 +37,14 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
       ),
       child: Column(
         children: [
-          // ==================================================================
-          // HEADER: Título da Categoria
-          // ==================================================================
+          // HEADER
           InkWell(
             onTap: () {
               setState(() {
                 _isExpanded = !_isExpanded;
               });
             },
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(12),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -60,11 +55,8 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
               ),
               child: Row(
                 children: [
-                  // Ícone da categoria
                   _buildCategoriaIcon(),
                   const SizedBox(width: 12),
-
-                  // Título
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,13 +79,8 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
                       ],
                     ),
                   ),
-
-                  // Indicador de progresso
                   _buildProgressIndicator(),
-
                   const SizedBox(width: 12),
-
-                  // Ícone de expandir/colapsar
                   Icon(
                     _isExpanded ? Icons.expand_less : Icons.expand_more,
                     color: Colors.grey.shade700,
@@ -103,12 +90,10 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
             ),
           ),
 
-          // ==================================================================
-          // BODY: Lista de Itens (Expansível)
-          // ==================================================================
+          // BODY - Lista de Itens
           if (_isExpanded)
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12), // ✅ Padding interno controlado
               child: Column(
                 children: [
                   ...categoria.itens.map((item) {
@@ -129,14 +114,8 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
     );
   }
 
-  // ==========================================================================
-  // ÍCONE DA CATEGORIA
-  // ==========================================================================
-
   Widget _buildCategoriaIcon() {
     IconData iconData;
-
-    // Mapeia string do ícone para IconData
     switch (widget.categoria.icone.toLowerCase()) {
       case 'local_shipping':
         iconData = Icons.local_shipping;
@@ -153,20 +132,11 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
       case 'person':
         iconData = Icons.person;
         break;
-      case 'widgets':
-        iconData = Icons.widgets;
-        break;
-      case 'straighten':
-        iconData = Icons.straighten;
-        break;
-      case 'content_cut':
-        iconData = Icons.content_cut;
-        break;
-      case 'label':
-        iconData = Icons.label;
-        break;
       case 'science':
         iconData = Icons.science;
+        break;
+      case 'info':
+        iconData = Icons.info;
         break;
       default:
         iconData = Icons.checklist;
@@ -178,21 +148,12 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
         color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(
-        iconData,
-        color: _getIconColor(),
-        size: 24,
-      ),
+      child: Icon(iconData, color: _getIconColor(), size: 24),
     );
   }
 
-  // ==========================================================================
-  // INDICADOR DE PROGRESSO
-  // ==========================================================================
-
   Widget _buildProgressIndicator() {
-    final categoria = widget.categoria;
-    final percentual = categoria.percentualConclusao;
+    final percentual = widget.categoria.percentualConclusao;
 
     return Stack(
       alignment: Alignment.center,
@@ -209,64 +170,37 @@ class _ChecklistCategoriaCardState extends State<ChecklistCategoriaCard> {
         ),
         Text(
           '${percentual.toStringAsFixed(0)}%',
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
         ),
       ],
     );
   }
 
-  // ==========================================================================
-  // CORES
-  // ==========================================================================
-
   Color _getBorderColor() {
     final percentual = widget.categoria.percentualConclusao;
-
-    if (percentual >= 100) {
-      return Colors.green;
-    } else if (percentual > 0) {
-      return Colors.orange;
-    } else {
-      return Colors.grey.shade300;
-    }
+    if (percentual >= 100) return Colors.green;
+    if (percentual > 0) return Colors.orange;
+    return Colors.grey.shade300;
   }
 
   Color _getHeaderColor() {
     final percentual = widget.categoria.percentualConclusao;
-
-    if (percentual >= 100) {
-      return Colors.green.withOpacity(0.1);
-    } else if (percentual > 0) {
-      return Colors.orange.withOpacity(0.05);
-    } else {
-      return Colors.grey.withOpacity(0.05);
-    }
+    if (percentual >= 100) return Colors.green.withOpacity(0.1);
+    if (percentual > 0) return Colors.orange.withOpacity(0.05);
+    return Colors.grey.withOpacity(0.05);
   }
 
   Color _getIconColor() {
     final percentual = widget.categoria.percentualConclusao;
-
-    if (percentual >= 100) {
-      return Colors.green;
-    } else if (percentual > 0) {
-      return Colors.orange;
-    } else {
-      return Colors.blue;
-    }
+    if (percentual >= 100) return Colors.green;
+    if (percentual > 0) return Colors.orange;
+    return Colors.blue;
   }
 
   Color _getProgressColor() {
     final percentual = widget.categoria.percentualConclusao;
-
-    if (percentual >= 100) {
-      return Colors.green;
-    } else if (percentual >= 50) {
-      return Colors.orange;
-    } else {
-      return Colors.blue;
-    }
+    if (percentual >= 100) return Colors.green;
+    if (percentual >= 50) return Colors.orange;
+    return Colors.blue;
   }
 }

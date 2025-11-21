@@ -8,12 +8,15 @@ import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/checklist_view_
 class ChecklistAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String nroDocto;
   final String serieDocto;
+  final int codEmitente;
+
   final VoidCallback onInfoPressed;
 
   const ChecklistAppBar({
     super.key,
     required this.nroDocto,
     required this.serieDocto,
+    required this.codEmitente,
     required this.onInfoPressed,
   });
 
@@ -30,7 +33,14 @@ class ChecklistAppBar extends StatelessWidget implements PreferredSizeWidget {
                 style: const TextStyle(fontSize: 16),
               ),
               Text(
-                'NF $nroDocto-$serieDocto',
+                'NF: $nroDocto Série: $serieDocto',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+              Text(
+                'Cod: $codEmitente',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.normal,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/docto_fisico_model.dart';
+import 'package:wmsapp/navigation/app_router.dart';
 import 'package:wmsapp/shared/enums/status_documento.dart';
 import 'package:wmsapp/shared/widgets/checklist_button.dart';
 import 'package:wmsapp/shared/widgets/status_badge.dart';
@@ -96,14 +98,29 @@ class DoctoFisicoCard extends StatelessWidget {
                     ),
                   ),
 
+                  ChecklistButton(
+                    onTap: () {
+                      context.push(
+                        AppRouter.checklist,
+                        extra: {
+                          'codEstabel': documento.codEstabel,
+                          'codEmitente': documento.codEmitente,
+                          'nroDocto': documento.nroDocto,
+                          'serieDocto': documento.serieDocto,
+                        },
+                      );
+                    },
+                  ),
+
+                  /*
                   if (onCheckListTap != null) ...[
                     const SizedBox(width: 8),
                     ChecklistButton(
                       isCompleto: checklistCompleto,
                       onTap: onCheckListTap,
                     ),
-                  ],
-
+                    
+                  ],*/
                   const SizedBox(width: 8),
 
                   // Badge de status

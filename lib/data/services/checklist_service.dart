@@ -69,7 +69,7 @@ class ChecklistService {
 
       // Chama API GET
       final response = await _apiService.get(
-        'rep/v1/checklist_get_documento/',
+        'rep/v1/api_checklist_get_documento/',
         queryParams: queryParams,
         username: userForAuth,
         password: password,
@@ -98,11 +98,16 @@ class ChecklistService {
       if (kDebugMode) {
         debugPrint('═══════════════════════════════════════');
         debugPrint('❌ [ChecklistService] Erro ao buscar checklist');
-        debugPrint('   Erro: $e');
+        debugPrint('   Mensagem do backend: $e'); // mostra a mensagem detalhada
         debugPrint('   Stack: $stack');
         debugPrint('═══════════════════════════════════════');
       }
-      rethrow;
+      // Aqui você pode transformar em mensagem amigável
+      throw Exception(
+        e.toString().contains('Template não encontrado')
+            ? 'Checklist não encontrado para o fornecedor informado'
+            : 'Falha ao carregar checklist: $e',
+      );
     }
   }
 
@@ -344,17 +349,7 @@ class ChecklistService {
   ChecklistModel _parseChecklistResponse(Map<String, dynamic> response) {
     try {
       // A resposta vem no formato padrão da API
-      final items = response['items'] as List?;
-
-      if (items == null || items.isEmpty) {
-        throw Exception('Resposta vazia do servidor');
-      }
-
-      // Pega o primeiro item (que contém o dataset)
-      final firstItem = items[0] as Map<String, dynamic>;
-
-      // Verifica se tem dsChecklist
-      final dsChecklist = firstItem['dsChecklist'] as Map<String, dynamic>?;
+      final dsChecklist = response['dsChecklist'] as Map<String, dynamic>?;
 
       if (dsChecklist == null) {
         throw Exception('Dataset dsChecklist não encontrado na resposta');
@@ -369,9 +364,6 @@ class ChecklistService {
 
       // Parse do checklist
       final checklistJson = ttChecklistResponse[0] as Map<String, dynamic>;
-
-      // Adiciona as categorias do dataset
-      checklistJson['tt-categoria'] = dsChecklist['tt-categoria'];
 
       // Cria o model
       return ChecklistModel.fromJson(checklistJson);

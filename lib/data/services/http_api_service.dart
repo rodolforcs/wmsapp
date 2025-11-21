@@ -33,6 +33,13 @@ class HttpApiService implements IApiService {
     ).replace(queryParameters: queryParams);
     print('GET -> $url'); // ESSENCIAL PARA DEBUG
 
+    final headers = _createHeaders(username: username, password: password);
+    final response = await http.get(url, headers: headers);
+
+    // Log sempre
+    print('↩ Status: ${response.statusCode}');
+    print('↩ Body: ${response.body}');
+
     try {
       //Cria headers com credenciais fornecidas
       final headers = _createHeaders(username: username, password: password);

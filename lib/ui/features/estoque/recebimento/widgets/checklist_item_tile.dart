@@ -5,14 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:wmsapp/data/models/checklist/checklist_item_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/checklist_view_model.dart';
 
-/// Tile de item do checklist
-///
-/// Suporta diferentes tipos de resposta:
-/// - SELECT: Botões (OK, NOK, N/A)
-/// - BOOLEAN: Switch (SIM/NÃO)
-/// - TEXT: Campo de texto
-/// - NUMBER: Campo numérico
-/// - DATE: Seletor de data
 class ChecklistItemTile extends StatefulWidget {
   final ChecklistItemModel item;
   final int codChecklist;
@@ -30,22 +22,19 @@ class ChecklistItemTile extends StatefulWidget {
 }
 
 class _ChecklistItemTileState extends State<ChecklistItemTile> {
-  final TextEditingController _observacaoController = TextEditingController();
-  bool _mostrarObservacao = false;
+  final TextEditingController _obsController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Inicializa observação se já existir
     if (widget.item.resposta?.observacao != null) {
-      _observacaoController.text = widget.item.resposta!.observacao!;
-      _mostrarObservacao = true;
+      _obsController.text = widget.item.resposta!.observacao!;
     }
   }
 
   @override
   void dispose() {
-    _observacaoController.dispose();
+    _obsController.dispose();
     super.dispose();
   }
 
@@ -53,36 +42,47 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
   Widget build(BuildContext context) {
     final item = widget.item;
 
+    // Item informativo (TEXT)
+    if (item.tipoResposta == 'TEXT') {
+      return _buildItemInformativo();
+    }
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: item.isRespondido
-            ? Colors.green.withOpacity(0.05)
-            : Colors.transparent,
+        color: item.isRespondido ? Colors.green.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: item.isRespondido
-              ? Colors.green.shade200
+              ? Colors.green.shade300
               : Colors.grey.shade300,
           width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ==================================================================
-          // HEADER: Pergunta e Status
-          // ==================================================================
-          Padding(
-            padding: const EdgeInsets.all(12),
+          // ================================================================
+          // COLUNA 1: PERGUNTA (40%)
+          // ================================================================
+          Expanded(
+            flex: 4,
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Ícone de status
-                _buildStatusIcon(),
-                const SizedBox(width: 12),
+                Icon(
+                  item.isRespondido
+                      ? Icons.check_circle
+                      : Icons.radio_button_unchecked,
+                  size: 20,
+                  color: item.isRespondido
+                      ? (item.isConforme ? Colors.green : Colors.orange)
+                      : Colors.grey.shade400,
+                ),
+                const SizedBox(width: 8),
 
-                // Pergunta
+                // Texto
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,135 +90,128 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
                       Text(
                         item.desItem,
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      if (item.tooltip.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                      if (item.tooltip.isNotEmpty)
                         Text(
                           item.tooltip,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Colors.grey.shade600,
                             fontStyle: FontStyle.italic,
                           ),
                         ),
-                      ],
                     ],
                   ),
                 ),
-
-                // Badge obrigatório
-                if (item.obrigatorio)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'Obrigatório',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
 
-          // ==================================================================
-          // BODY: Campo de Resposta
-          // ==================================================================
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: _buildCampoResposta(),
+          const SizedBox(width: 12),
+
+          // ================================================================
+          // COLUNA 2: OPÇÕES (30%)
+          // ================================================================
+          Expanded(
+            flex: 3,
+            child: _buildOpcoes(),
           ),
 
-          // ==================================================================
-          // FOOTER: Observação (opcional)
-          // ==================================================================
-          if (item.permiteObs) _buildObservacao(),
+          const SizedBox(width: 12),
 
-          const SizedBox(height: 8),
+          // ================================================================
+          // COLUNA 3: OBSERVAÇÃO (30%)
+          // ================================================================
+          if (item.permiteObs)
+            Expanded(
+              flex: 3,
+              child: TextField(
+                controller: _obsController,
+                decoration: InputDecoration(
+                  hintText: "Obs.",
+                  hintStyle: const TextStyle(fontSize: 12),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: const BorderSide(color: Colors.blue, width: 2),
+                  ),
+                ),
+                style: const TextStyle(fontSize: 12),
+                onChanged: (_) {
+                  if (item.isRespondido) {
+                    _salvarObservacao();
+                  }
+                },
+              ),
+            ),
         ],
       ),
     );
   }
 
   // ==========================================================================
-  // ÍCONE DE STATUS
+  // OPÇÕES
   // ==========================================================================
 
-  Widget _buildStatusIcon() {
-    if (widget.item.isRespondido) {
-      return Icon(
-        Icons.check_circle,
-        color: widget.item.isConforme ? Colors.green : Colors.orange,
-        size: 24,
-      );
-    } else {
-      return Icon(
-        Icons.radio_button_unchecked,
-        color: Colors.grey.shade400,
-        size: 24,
-      );
+  Widget _buildOpcoes() {
+    if (widget.item.tipoResposta == 'SELECT') {
+      return _buildOpcoesSelect();
+    } else if (widget.item.tipoResposta == 'BOOLEAN') {
+      return _buildOpcoesBoolean();
     }
+    return const SizedBox.shrink();
   }
 
-  // ==========================================================================
-  // CAMPO DE RESPOSTA (por tipo)
-  // ==========================================================================
-
-  Widget _buildCampoResposta() {
-    switch (widget.item.tipoResposta) {
-      case 'SELECT':
-        return _buildCampoSelect();
-      case 'BOOLEAN':
-        return _buildCampoBoolean();
-      case 'TEXT':
-        return _buildCampoText();
-      case 'NUMBER':
-        return _buildCampoNumber();
-      case 'DATE':
-        return _buildCampoDate();
-      default:
-        return const Text('Tipo de resposta não suportado');
-    }
-  }
-
-  // ==========================================================================
-  // CAMPO SELECT (OK, NOK, N/A)
-  // ==========================================================================
-
-  Widget _buildCampoSelect() {
+  Widget _buildOpcoesSelect() {
     final opcoes = widget.item.opcoes;
     final respostaAtual = widget.item.resposta?.respostaText;
 
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 4,
+      runSpacing: 0,
       children: opcoes.map((opcao) {
         final isSelected = respostaAtual == opcao;
 
-        return ChoiceChip(
-          label: Text(opcao),
-          selected: isSelected,
-          onSelected: (selected) {
-            if (selected) {
-              _salvarRespostaSelect(opcao);
-            }
-          },
-          selectedColor: _getCorOpcao(opcao),
-          labelStyle: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        return InkWell(
+          onTap: () => _salvarRespostaSelect(opcao),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Radio<String>(
+                value: opcao,
+                groupValue: respostaAtual,
+                onChanged: (value) {
+                  if (value != null) _salvarRespostaSelect(value);
+                },
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              Text(
+                opcao,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? _getCorOpcao(opcao)
+                      : Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
           ),
         );
       }).toList(),
@@ -228,183 +221,78 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
   Color _getCorOpcao(String opcao) {
     switch (opcao.toUpperCase()) {
       case 'OK':
-        return Colors.green;
+        return Colors.green.shade700;
       case 'NOK':
-        return Colors.red;
+        return Colors.red.shade700;
       case 'N/A':
-        return Colors.orange;
+        return Colors.orange.shade700;
       default:
-        return Colors.blue;
+        return Colors.blue.shade700;
     }
   }
 
-  // ==========================================================================
-  // CAMPO BOOLEAN (SIM/NÃO)
-  // ==========================================================================
-
-  Widget _buildCampoBoolean() {
-    final resposta = widget.item.resposta?.respostaBoolean;
+  Widget _buildOpcoesBoolean() {
+    final resposta = widget.item.resposta?.respostaBoolean ?? false;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('Não', style: TextStyle(fontSize: 14)),
+        Text(
+          'NÃO',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: !resposta ? FontWeight.bold : FontWeight.normal,
+            color: !resposta ? Colors.red.shade700 : Colors.grey,
+          ),
+        ),
         Switch(
-          value: resposta ?? false,
+          value: resposta,
           onChanged: (value) => _salvarRespostaBoolean(value),
           activeColor: Colors.green,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        const Text('Sim', style: TextStyle(fontSize: 14)),
-      ],
-    );
-  }
-
-  // ==========================================================================
-  // CAMPO TEXT
-  // ==========================================================================
-
-  Widget _buildCampoText() {
-    return TextField(
-      controller: TextEditingController(
-        text: widget.item.resposta?.respostaText ?? '',
-      ),
-      decoration: const InputDecoration(
-        hintText: 'Digite sua resposta...',
-        border: OutlineInputBorder(),
-        isDense: true,
-      ),
-      onSubmitted: (value) => _salvarRespostaText(value),
-    );
-  }
-
-  // ==========================================================================
-  // CAMPO NUMBER
-  // ==========================================================================
-
-  Widget _buildCampoNumber() {
-    return TextField(
-      controller: TextEditingController(
-        text: widget.item.resposta?.respostaNumber?.toString() ?? '',
-      ),
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
-        hintText: 'Digite um número...',
-        border: OutlineInputBorder(),
-        isDense: true,
-      ),
-      onSubmitted: (value) {
-        final numero = double.tryParse(value);
-        if (numero != null) {
-          // TODO: Implementar salvarRespostaNumber
-        }
-      },
-    );
-  }
-
-  // ==========================================================================
-  // CAMPO DATE
-  // ==========================================================================
-
-  Widget _buildCampoDate() {
-    final data = widget.item.resposta?.respostaDate;
-
-    return InkWell(
-      onTap: () async {
-        final dataSelecionada = await showDatePicker(
-          context: context,
-          initialDate: data ?? DateTime.now(),
-          firstDate: DateTime(2020),
-          lastDate: DateTime(2030),
-        );
-
-        if (dataSelecionada != null) {
-          // TODO: Implementar salvarRespostaDate
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              data != null ? _formatarData(data) : 'Selecione uma data',
-              style: TextStyle(
-                color: data != null ? Colors.black87 : Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==========================================================================
-  // OBSERVAÇÃO
-  // ==========================================================================
-
-  Widget _buildObservacao() {
-    return Column(
-      children: [
-        const Divider(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Botão para expandir observação
-              if (!_mostrarObservacao)
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _mostrarObservacao = true;
-                    });
-                  },
-                  icon: const Icon(Icons.add_comment, size: 16),
-                  label: const Text('Adicionar Observação'),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-
-              // Campo de observação
-              if (_mostrarObservacao)
-                TextField(
-                  controller: _observacaoController,
-                  decoration: InputDecoration(
-                    hintText: 'Digite uma observação (opcional)...',
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: () {
-                        _observacaoController.clear();
-                        setState(() {
-                          _mostrarObservacao = false;
-                        });
-                      },
-                    ),
-                  ),
-                  maxLines: 2,
-                  onChanged: (_) {
-                    // Salva observação automaticamente quando resposta já existir
-                    if (widget.item.isRespondido) {
-                      _salvarObservacao();
-                    }
-                  },
-                ),
-            ],
+        Text(
+          'SIM',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: resposta ? FontWeight.bold : FontWeight.normal,
+            color: resposta ? Colors.green.shade700 : Colors.grey,
           ),
         ),
       ],
     );
   }
 
+  Widget _buildItemInformativo() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              widget.item.desItem,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.blue.shade900,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ==========================================================================
-  // SALVAR RESPOSTAS
+  // SALVAR
   // ==========================================================================
 
   void _salvarRespostaSelect(String resposta) {
@@ -413,9 +301,7 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
       sequenciaCat: widget.sequenciaCat,
       sequenciaItem: widget.item.sequenciaItem,
       resposta: resposta,
-      observacao: _observacaoController.text.isNotEmpty
-          ? _observacaoController.text
-          : null,
+      observacao: _obsController.text.isNotEmpty ? _obsController.text : null,
     );
   }
 
@@ -425,51 +311,30 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
       sequenciaCat: widget.sequenciaCat,
       sequenciaItem: widget.item.sequenciaItem,
       resposta: resposta,
-      observacao: _observacaoController.text.isNotEmpty
-          ? _observacaoController.text
-          : null,
-    );
-  }
-
-  void _salvarRespostaText(String resposta) {
-    if (resposta.isEmpty) return;
-
-    final viewModel = context.read<ChecklistViewModel>();
-    viewModel.salvarRespostaText(
-      sequenciaCat: widget.sequenciaCat,
-      sequenciaItem: widget.item.sequenciaItem,
-      resposta: resposta,
-      observacao: _observacaoController.text.isNotEmpty
-          ? _observacaoController.text
-          : null,
+      observacao: _obsController.text.isNotEmpty ? _obsController.text : null,
     );
   }
 
   void _salvarObservacao() {
-    // Apenas atualiza observação se item já foi respondido
     if (!widget.item.isRespondido) return;
 
     final viewModel = context.read<ChecklistViewModel>();
 
-    // Re-salva com mesma resposta mas nova observação
     if (widget.item.tipoResposta == 'SELECT') {
       viewModel.salvarRespostaSelect(
         sequenciaCat: widget.sequenciaCat,
         sequenciaItem: widget.item.sequenciaItem,
         resposta: widget.item.resposta!.respostaText!,
-        observacao: _observacaoController.text,
+        observacao: _obsController.text,
+      );
+    } else if (widget.item.tipoResposta == 'BOOLEAN') {
+      viewModel.salvarRespostaBoolean(
+        sequenciaCat: widget.sequenciaCat,
+        sequenciaItem: widget.item.sequenciaItem,
+        resposta: widget.item.resposta!.respostaBoolean!,
+        observacao: _obsController.text,
       );
     }
-  }
-
-  // ==========================================================================
-  // UTILS
-  // ==========================================================================
-
-  String _formatarData(DateTime data) {
-    return '${data.day.toString().padLeft(2, '0')}/'
-        '${data.month.toString().padLeft(2, '0')}/'
-        '${data.year}';
   }
 }
 /*
@@ -477,59 +342,27 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
 
 ---
 
-## ✅ **TODOS OS 7 WIDGETS CRIADOS!**
+## ✅ **RESULTADO FINAL:**
 ```
-lib/ui/features/estoque/recebimento/widgets/
-├── ✅ checklist_app_bar.dart
-├── ✅ checklist_progress_bar.dart
-├── ✅ checklist_categoria_card.dart
-├── ✅ checklist_item_tile.dart
-├── ✅ checklist_footer.dart
-├── ✅ checklist_info_dialog.dart
-└── ✅ checklist_confirmar_dialog.dart
-```
-
----
-
-## 🎯 **CARACTERÍSTICAS DOS WIDGETS:**
-
-### **ChecklistCategoriaCard:**
-✅ Expansível (collapse/expand)
-✅ Indicador de progresso circular
-✅ Cores dinâmicas por status
-✅ Ícones mapeados do backend
-
-### **ChecklistItemTile:**
-✅ Suporta 5 tipos de resposta
-✅ Observação opcional expansível
-✅ Badge "Obrigatório"
-✅ Feedback visual (cores)
-✅ Auto-save em tempo real
-
----
-
-## 📱 **LAYOUT RESPONSIVO:**
-```
-CELULAR (< 600px):
-- Botões em coluna
-- Padding menor
-- Layout vertical
-
-TABLET (> 600px):
-- Botões em linha
-- Padding maior
-- Layout horizontal
-- Largura máxima 800px
-```
-
----
-
-## 📊 **RESUMO COMPLETO DO FLUTTER:**
-```
-✅ Models (4)
-✅ Service (1)
-✅ Repository (1)
-✅ ViewModel (1)
-✅ Screen (1)
-✅ Widgets (7)
+┌────────────────────────────────────────────┐
+│ 📋 Checklist Padrão                        │ AppBar
+│    NF 0220727-1                            │
+├────────────────────────────────────────────┤
+│ 2 de 6 itens                        33%    │ Progresso
+│ [████░░░░░░░░]                             │ (direto)
+├────────────────────────────────────────────┤
+│                                            │
+│ ┌────────────────────────────────────────┐ │
+│ │ 🚚 Veículo                      50% ▼  │ │ Categoria
+│ ├────────────────────────────────────────┤ │
+│ │ ✓ Protegido? │ ●OK ○NOK ○N/A │ [Obs_]│ │ Item
+│ │ ○ Limpo?     │ ○OK ○NOK ○N/A │ [____]│ │ Item
+│ └────────────────────────────────────────┘ │
+│                                            │
+│ ┌────────────────────────────────────────┐ │
+│ │ 📦 Material                     0%  ▼  │ │ Categoria
+│ └────────────────────────────────────────┘ │
+├────────────────────────────────────────────┤
+│ [Salvar Rascunho]  [✓ Finalizar]          │ Footer
+└────────────────────────────────────────────┘
 */

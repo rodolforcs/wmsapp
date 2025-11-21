@@ -5,17 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/viewmodel/checklist_view_model.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/checklist_app_bar.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/checklist_categoria_card.dart';
-import 'package:wmsapp/ui/features/estoque/recebimento/widgets/checklist_progress_bar.dart';
 import 'package:wmsapp/ui/features/estoque/recebimento/widgets/checklist_footer.dart';
-import 'package:wmsapp/ui/features/estoque/recebimento/widgets/checklist_info_dialog.dart';
-import 'package:wmsapp/ui/features/estoque/recebimento/widgets/checklist_confirmar_dialog.dart';
-import 'package:wmsapp/ui/widgets/responsive_center_layout.dart';
-import 'package:wmsapp/shared/widgets/empty_state_widget.dart';
 
-/// 📋 Tela do Checklist
-///
-/// Exibe checklist completo com categorias e itens
-/// Suporta tablet e celular com layout responsivo
 class ChecklistScreen extends StatefulWidget {
   final String codEstabel;
   final int codEmitente;
@@ -38,8 +29,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Carrega checklist ao abrir tela
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _carregarChecklist();
     });
@@ -61,20 +50,18 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       appBar: ChecklistAppBar(
         nroDocto: widget.nroDocto,
         serieDocto: widget.serieDocto,
+        codEmitente: widget.codEmitente,
+
         onInfoPressed: () => _mostrarInformacoes(context),
       ),
       body: Consumer<ChecklistViewModel>(
         builder: (context, viewModel, child) {
-          // ====================================================================
           // LOADING
-          // ====================================================================
           if (viewModel.isLoading) {
             return _buildLoading();
           }
 
-          // ====================================================================
           // ERRO
-          // ====================================================================
           if (viewModel.hasError) {
             return _buildError(
               context: context,
@@ -83,36 +70,17 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             );
           }
 
-          // ====================================================================
           // SEM CHECKLIST
-          // ====================================================================
-          // ✅ CORRETO
           if (!viewModel.hasChecklist) {
-            return const EmptyStateWidget(
-              icon: Icons.checklist,
-              title: 'Nenhum checklist disponível',
-              /*
-              message:
-                  'Não foi possível carregar o checklist para este documento.',
-                  */
-            );
+            return _buildEmpty(context);
           }
 
-          // ====================================================================
-          // CHECKLIST CARREGADO - Layout Responsivo
-          // ====================================================================
-          return ResponsiveCenterLayout(
-            maxWidth: 800, // Limita largura em tablets
-            child: _buildChecklistContent(context, viewModel),
-          );
+          // ✅ CHECKLIST CARREGADO - TELA INTEIRA (sem ResponsiveCenterLayout)
+          return _buildChecklistContent(context, viewModel);
         },
       ),
     );
   }
-
-  // ==========================================================================
-  // LOADING
-  // ==========================================================================
 
   Widget _buildLoading() {
     return const Center(
@@ -127,10 +95,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
-  // ==========================================================================
-  // ERRO
-  // ==========================================================================
-
   Widget _buildError({
     required BuildContext context,
     required String mensagem,
@@ -142,11 +106,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Erro ao carregar checklist',
@@ -171,9 +131,32 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
-  // ==========================================================================
-  // CONTEÚDO DO CHECKLIST
-  // ==========================================================================
+  Widget _buildEmpty(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.checklist, size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(
+            'Nenhum checklist disponível',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Não foi possível carregar o checklist para este documento.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildChecklistContent(
     BuildContext context,
@@ -183,28 +166,71 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
     return Column(
       children: [
-        // ====================================================================
-        // HEADER: Progresso
-        // ====================================================================
-        ChecklistProgressBar(
-          percentual: checklist.percentualConclusao,
-          itensRespondidos: checklist.itensRespondidos,
-          totalItens: checklist.totalItens,
-          situacao: checklist.situacaoDescricao,
+        // ✅ BARRA DE PROGRESSO (tela inteira, sem padding lateral)
+        Container(
+          width: double.infinity, // ✅ Largura total
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          color: Colors.white,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${checklist.itensRespondidos} de ${checklist.totalItens} itens',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '${checklist.percentualConclusao.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _getProgressColor(checklist.percentualConclusao),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: checklist.percentualConclusao / 100,
+                  minHeight: 8,
+                  backgroundColor: Colors.grey.shade300,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    _getProgressColor(checklist.percentualConclusao),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
 
         const Divider(height: 1),
 
-        // ====================================================================
-        // BODY: Lista de Categorias
-        // ====================================================================
+        // ✅ LISTA DE CATEGORIAS (tela inteira)
         Expanded(
-          child: _buildCategoriasList(checklist),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ), // ✅ Padding controlado
+            itemCount: checklist.categorias.length,
+            itemBuilder: (context, index) {
+              final categoria = checklist.categorias[index];
+              return ChecklistCategoriaCard(
+                key: ValueKey('cat-${categoria.sequenciaCat}'),
+                categoria: categoria,
+                codChecklist: checklist.codChecklist,
+              );
+            },
+          ),
         ),
 
-        // ====================================================================
-        // FOOTER: Botões de Ação
-        // ====================================================================
+        // ✅ FOOTER (tela inteira)
         ChecklistFooter(
           podeFinalizar: viewModel.podeFinalizar,
           todosItensRespondidos: viewModel.todosItensRespondidos,
@@ -216,73 +242,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
-  // ==========================================================================
-  // LISTA DE CATEGORIAS
-  // ==========================================================================
-
-  Widget _buildCategoriasList(dynamic checklist) {
-    // ✅ Usa LayoutBuilder para adaptar padding
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Tablet: padding maior
-        final padding = constraints.maxWidth > 600
-            ? const EdgeInsets.all(24)
-            : const EdgeInsets.all(16);
-
-        return ListView.builder(
-          padding: padding,
-          itemCount: checklist.categorias.length,
-          itemBuilder: (context, index) {
-            final categoria = checklist.categorias[index];
-
-            return ChecklistCategoriaCard(
-              key: ValueKey('cat-${categoria.sequenciaCat}'),
-              categoria: categoria,
-              codChecklist: checklist.codChecklist,
-            );
-          },
-        );
-      },
-    );
+  Color _getProgressColor(double percentual) {
+    if (percentual >= 100) return Colors.green;
+    if (percentual >= 50) return Colors.orange;
+    return Colors.blue;
   }
 
-  // ==========================================================================
-  // DIALOGS (MODULARIZADOS)
-  // ==========================================================================
-
   void _mostrarInformacoes(BuildContext context) {
-    final viewModel = context.read<ChecklistViewModel>();
-    final checklist = viewModel.checklist;
-
-    if (checklist == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => ChecklistInfoDialog(checklist: checklist),
-    );
+    // TODO: Implementar dialog de informações
   }
 
   void _confirmarFinalizacao(
     BuildContext context,
     ChecklistViewModel viewModel,
   ) {
-    showDialog(
-      context: context,
-      builder: (context) => ChecklistConfirmarDialog(
-        itensRespondidos: viewModel.itensRespondidos,
-        totalItens: viewModel.totalItens,
-        onConfirmar: () async {
-          Navigator.of(context).pop(); // Fecha dialog
-
-          final sucesso = await viewModel.finalizarChecklist(
-            aprovado: true,
-          );
-
-          if (sucesso && context.mounted) {
-            Navigator.of(context).pop(); // Volta para tela anterior
-          }
-        },
-      ),
-    );
+    // TODO: Implementar dialog de confirmação
   }
 }

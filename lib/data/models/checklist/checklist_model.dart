@@ -1,3 +1,5 @@
+// lib/data/models/checklist/checklist_model.dart
+
 import 'checklist_categoria_model.dart';
 
 class ChecklistModel {
@@ -7,8 +9,8 @@ class ChecklistModel {
   final String tipoChecklist;
   final int situacao;
   final double percentualConclusao;
-  final DateTime dtInicio; // agora opcional
-  final String usuarioInicio; // agora opcional
+  final DateTime dtInicio;
+  final String usuarioInicio;
   final bool criadoAgora;
   final List<ChecklistCategoriaModel> categorias;
 
@@ -24,6 +26,93 @@ class ChecklistModel {
     required this.criadoAgora,
     required this.categorias,
   });
+
+  // ==========================================================================
+  // GETTERS
+  // ==========================================================================
+
+  String get situacaoDescricao {
+    switch (situacao) {
+      case 0:
+        return 'Pendente';
+      case 1:
+        return 'Em Andamento';
+      case 2:
+        return 'Concluído';
+      case 3:
+        return 'Aprovado';
+      case 9:
+        return 'Reprovado';
+      default:
+        return 'Desconhecido';
+    }
+  }
+
+  bool get isPendente => situacao == 0;
+  bool get isEmAndamento => situacao == 1;
+  bool get isConcluido => situacao == 2 || situacao == 3;
+  bool get isReprovado => situacao == 9;
+
+  /// ✅ Total de itens NÃO informativos no checklist
+  int get totalItens {
+    return categorias.fold(0, (total, categoria) {
+      return total +
+          categoria.itens
+              .where((item) => !item.isInformativo) // ✅ Exclui informativos
+              .length;
+    });
+  }
+
+  /// ✅ Total de itens NÃO informativos respondidos
+  int get itensRespondidos {
+    return categorias.fold(0, (total, categoria) {
+      return total +
+          categoria.itens
+              .where((item) => !item.isInformativo && item.isRespondido)
+              .length;
+    });
+  }
+
+  /// ✅ Percentual calculado dinamicamente (0-100)
+  double get percentualConclusaoCalculado {
+    if (totalItens == 0) return 0.0;
+    return (itensRespondidos / totalItens) * 100;
+  }
+
+  /// ✅ Verifica se todos os itens OBRIGATÓRIOS foram respondidos
+  bool get todosItensRespondidos {
+    for (var categoria in categorias) {
+      for (var item in categoria.itens) {
+        // ✅ Item informativo não conta
+        if (item.isInformativo) continue;
+
+        // Se é obrigatório e não foi respondido
+        if (item.obrigatorio && !item.isRespondido) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /// Lista de itens obrigatórios não respondidos
+  List<String> get itensObrigatoriosPendentes {
+    final pendentes = <String>[];
+
+    for (var categoria in categorias) {
+      for (var item in categoria.itens) {
+        // ✅ Item informativo não conta
+        if (item.isInformativo) continue;
+
+        // Se é obrigatório e não foi respondido
+        if (item.obrigatorio && !item.isRespondido) {
+          pendentes.add('${categoria.desCategoria} > ${item.desItem}');
+        }
+      }
+    }
+
+    return pendentes;
+  }
 
   // ==========================================================================
   // FROM JSON
@@ -80,46 +169,12 @@ class ChecklistModel {
       'tipo-checklist': tipoChecklist,
       'situacao': situacao,
       'percentual-conclusao': percentualConclusao,
-      if (dtInicio != null) 'dt-inicio': dtInicio!.toIso8601String(),
-      if (usuarioInicio != null) 'usuario-inicio': usuarioInicio,
+      'dt-inicio': dtInicio.toIso8601String(),
+      'usuario-inicio': usuarioInicio,
       'criado-agora': criadoAgora,
       'tt-categoria': categorias.map((cat) => cat.toJson()).toList(),
     };
   }
-
-  // ==========================================================================
-  // GETTERS
-  // ==========================================================================
-
-  String get situacaoDescricao {
-    switch (situacao) {
-      case 0:
-        return 'Pendente';
-      case 1:
-        return 'Em Andamento';
-      case 2:
-        return 'Concluído';
-      case 3:
-        return 'Aprovado';
-      case 9:
-        return 'Reprovado';
-      default:
-        return 'Desconhecido';
-    }
-  }
-
-  bool get isPendente => situacao == 0;
-  bool get isEmAndamento => situacao == 1;
-  bool get isConcluido => situacao == 2 || situacao == 3;
-  bool get isReprovado => situacao == 9;
-
-  int get totalItens =>
-      categorias.fold<int>(0, (sum, cat) => sum + cat.itens.length);
-
-  int get itensRespondidos =>
-      categorias.fold<int>(0, (sum, cat) => sum + cat.itensRespondidos);
-
-  bool get todosItensRespondidos => itensRespondidos == totalItens;
 
   // ==========================================================================
   // COPY WITH

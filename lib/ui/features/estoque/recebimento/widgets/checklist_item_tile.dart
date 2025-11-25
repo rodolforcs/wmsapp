@@ -11,11 +11,11 @@ class ChecklistItemTile extends StatefulWidget {
   final int sequenciaCat;
 
   const ChecklistItemTile({
-    Key? key,
+    super.key,
     required this.item,
     required this.codChecklist,
     required this.sequenciaCat,
-  }) : super(key: key);
+  });
 
   @override
   State<ChecklistItemTile> createState() => _ChecklistItemTileState();
@@ -42,21 +42,20 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
   Widget build(BuildContext context) {
     final item = widget.item;
 
-    // Item informativo (TEXT)
-    if (item.tipoResposta == 'TEXT') {
+    // ✅ VERIFICA SE É INFORMATIVO
+    if (item.isInformativo) {
       return _buildItemInformativo();
     }
 
+    // ✅ SEMPRE FUNDO BRANCO (sem mudança de cor)
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: item.isRespondido ? Colors.green.shade50 : Colors.white,
+        color: Colors.white, // ✅ SEMPRE BRANCO
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: item.isRespondido
-              ? Colors.green.shade300
-              : Colors.grey.shade300,
+          color: Colors.grey.shade300,
           width: 1,
         ),
       ),
@@ -70,7 +69,7 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
             flex: 4,
             child: Row(
               children: [
-                // Ícone de status
+                // ✅ Ícone de status (verde se respondido, cinza se não)
                 Icon(
                   item.isRespondido
                       ? Icons.check_circle
@@ -197,6 +196,7 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
                 onChanged: (value) {
                   if (value != null) _salvarRespostaSelect(value);
                 },
+                activeColor: Theme.of(context).primaryColor,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -263,12 +263,16 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
     );
   }
 
+  // ==========================================================================
+  // ITEM INFORMATIVO
+  // ==========================================================================
+
   Widget _buildItemInformativo() {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: Colors.blue.shade50, // ✅ Azul claro apenas para informativos
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.blue.shade200),
       ),
@@ -280,9 +284,25 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
             child: Text(
               widget.item.desItem,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: Colors.blue.shade900,
-                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          // Badge "Informativo"
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'INFORMATIVO',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade700,
               ),
             ),
           ),
@@ -337,32 +357,3 @@ class _ChecklistItemTileState extends State<ChecklistItemTile> {
     }
   }
 }
-/*
-```
-
----
-
-## ✅ **RESULTADO FINAL:**
-```
-┌────────────────────────────────────────────┐
-│ 📋 Checklist Padrão                        │ AppBar
-│    NF 0220727-1                            │
-├────────────────────────────────────────────┤
-│ 2 de 6 itens                        33%    │ Progresso
-│ [████░░░░░░░░]                             │ (direto)
-├────────────────────────────────────────────┤
-│                                            │
-│ ┌────────────────────────────────────────┐ │
-│ │ 🚚 Veículo                      50% ▼  │ │ Categoria
-│ ├────────────────────────────────────────┤ │
-│ │ ✓ Protegido? │ ●OK ○NOK ○N/A │ [Obs_]│ │ Item
-│ │ ○ Limpo?     │ ○OK ○NOK ○N/A │ [____]│ │ Item
-│ └────────────────────────────────────────┘ │
-│                                            │
-│ ┌────────────────────────────────────────┐ │
-│ │ 📦 Material                     0%  ▼  │ │ Categoria
-│ └────────────────────────────────────────┘ │
-├────────────────────────────────────────────┤
-│ [Salvar Rascunho]  [✓ Finalizar]          │ Footer
-└────────────────────────────────────────────┘
-*/

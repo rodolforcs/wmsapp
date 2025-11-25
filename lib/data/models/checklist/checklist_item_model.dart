@@ -1,5 +1,6 @@
-import 'dart:convert';
+// lib/data/models/checklist/checklist_item_model.dart
 
+import 'dart:convert';
 import 'checklist_resposta_model.dart';
 
 class ChecklistItemModel {
@@ -7,7 +8,8 @@ class ChecklistItemModel {
   final int sequenciaCat;
   final int sequenciaItem;
   final String desItem;
-  final String tipoResposta; // SELECT, BOOLEAN, TEXT, NUMBER, DATE
+  final String
+  tipoResposta; // SELECT, BOOLEAN, TEXT, NUMBER, DATE, '' (vazio = informativo)
   final String opcoesSelect; // JSON array string: ["OK","NOK","N/A"]
   final bool obrigatorio;
   final bool permiteObs;
@@ -16,7 +18,7 @@ class ChecklistItemModel {
   final int ordemExibicao;
 
   // Resposta (pode ser null se ainda não respondido)
-  ChecklistRespostaModel? resposta;
+  final ChecklistRespostaModel? resposta;
 
   ChecklistItemModel({
     required this.codChecklist,
@@ -32,6 +34,97 @@ class ChecklistItemModel {
     required this.ordemExibicao,
     this.resposta,
   });
+
+  // ==========================================================================
+  // GETTERS DE VALIDAÇÃO
+  // ==========================================================================
+
+  /// ✅ Verifica se é um item INFORMATIVO (não requer resposta)
+  bool get isInformativo {
+    final tipo = tipoResposta.toUpperCase();
+
+    // Tipos explicitamente informativos
+    if (tipo.isEmpty || tipo == 'INFO' || tipo == 'INFORMATIVO') {
+      return true;
+    }
+
+    // ✅ TEXT + não obrigatório = informativo
+    if (tipo == 'TEXT' && !obrigatorio) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// ✅ Verifica se o item foi respondido
+  bool get isRespondido {
+    // ✅ Item informativo sempre retorna true
+    if (isInformativo) return true;
+
+    // Verifica se tem resposta
+    if (resposta == null) return false;
+
+    // Valida se a resposta está preenchida
+    return resposta!.respostaText != null &&
+            resposta!.respostaText!.isNotEmpty ||
+        resposta!.respostaBoolean != null ||
+        resposta!.respostaNumber != null ||
+        resposta!.respostaDate != null;
+  }
+
+  /// ✅ Alias para compatibilidade
+  bool get foiRespondido => isRespondido;
+
+  /// ✅ Verifica se precisa resposta
+  bool get precisaResposta => !isInformativo;
+
+  bool get isConforme => resposta?.conforme ?? false;
+
+  bool get temObservacao => resposta?.observacao?.isNotEmpty ?? false;
+
+  // ==========================================================================
+  // OPÇÕES DO SELECT
+  // ==========================================================================
+
+  List<String> get opcoes {
+    try {
+      final decoded = jsonDecode(opcoesSelect);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      return ['OK', 'NOK', 'N/A']; // fallback
+    }
+  }
+
+  /// Texto da resposta para exibição
+  String get respostaTexto {
+    if (resposta == null) return '';
+
+    switch (tipoResposta) {
+      case 'BOOLEAN':
+        return resposta!.respostaBoolean == true ? 'Sim' : 'Não';
+      case 'SELECT':
+        return resposta!.respostaText ?? '';
+      case 'TEXT':
+        return resposta!.respostaText ?? '';
+      case 'NUMBER':
+        return resposta!.respostaNumber?.toString() ?? '';
+      case 'DATE':
+        return resposta!.respostaDate != null
+            ? _formatarData(resposta!.respostaDate!)
+            : '';
+      default:
+        return '';
+    }
+  }
+
+  String _formatarData(DateTime data) {
+    return '${data.day.toString().padLeft(2, '0')}/'
+        '${data.month.toString().padLeft(2, '0')}/'
+        '${data.year}';
+  }
 
   // ==========================================================================
   // FROM JSON
@@ -84,73 +177,6 @@ class ChecklistItemModel {
       'ordem-exibicao': ordemExibicao,
       if (resposta != null) 'tt-item-resposta': [resposta!.toJson()],
     };
-  }
-
-  // ==========================================================================
-  // GETTERS
-  // ==========================================================================
-
-  bool get isRespondido => resposta != null && resposta!.dtResposta != null;
-
-  bool get isConforme => resposta?.conforme ?? false;
-
-  bool get temObservacao => resposta?.observacao?.isNotEmpty ?? false;
-
-  List<String> get opcoes {
-    try {
-      final decoded = jsonDecode(opcoesSelect);
-      if (decoded is List) {
-        return decoded.map((e) => e.toString()).toList();
-      }
-      return [];
-    } catch (e) {
-      return ['OK', 'NOK', 'N/A']; // fallback
-    }
-  }
-
-  /*
-  /// Parse das opções do SELECT (JSON string para List)
-  List<String> get opcoes {
-    try {
-      // Remove aspas extras e faz split
-      final cleaned = opcoesSelect
-          .replaceAll('[', '')
-          .replaceAll(']', '')
-          .replaceAll('"', '')
-          .replaceAll("'", '');
-
-      return cleaned.split(',').map((e) => e.trim()).toList();
-    } catch (e) {
-      return ['OK', 'NOK', 'N/A']; // Fallback padrão
-    }
-  }
-  */
-  /// Texto da resposta para exibição
-  String get respostaTexto {
-    if (resposta == null) return '';
-
-    switch (tipoResposta) {
-      case 'BOOLEAN':
-        return resposta!.respostaBoolean == true ? 'Sim' : 'Não';
-      case 'SELECT':
-        return resposta!.respostaText ?? '';
-      case 'TEXT':
-        return resposta!.respostaText ?? '';
-      case 'NUMBER':
-        return resposta!.respostaNumber?.toString() ?? '';
-      case 'DATE':
-        return resposta!.respostaDate != null
-            ? _formatarData(resposta!.respostaDate!)
-            : '';
-      default:
-        return '';
-    }
-  }
-
-  String _formatarData(DateTime data) {
-    return '${data.day.toString().padLeft(2, '0')}/'
-        '${data.month.toString().padLeft(2, '0')}/'
-        '${data.year}';
   }
 
   // ==========================================================================

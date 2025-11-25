@@ -15,6 +15,7 @@ import 'package:wmsapp/data/repositories/checklist/checklist_repository.dart';
 /// - Extends BaseViewModel
 /// - Usa SessionViewModel para dados do usuário
 /// - Notifica listeners com notifyListeners()
+/// - Usa atualização otimista (Optimistic Update) para UX instantânea
 class ChecklistViewModel extends BaseViewModel {
   final ChecklistRepository _repository;
   final SessionViewModel _session;
@@ -71,16 +72,6 @@ class ChecklistViewModel extends BaseViewModel {
   // ==========================================================================
 
   /// Busca ou cria checklist para o documento
-  ///
-  /// Exemplo de uso:
-  /// ```dart
-  /// await checklistViewModel.carregarChecklist(
-  ///   codEstabel: '203',
-  ///   codEmitente: 89750,
-  ///   nroDocto: '0220727',
-  ///   serieDocto: '1',
-  /// );
-  /// ```
   Future<void> carregarChecklist({
     required String codEstabel,
     required int codEmitente,
@@ -151,20 +142,15 @@ class ChecklistViewModel extends BaseViewModel {
   }
 
   // ==========================================================================
-  // 💾 SALVAR RESPOSTA DE ITEM
+  // 💾 SALVAR RESPOSTA DE ITEM - SELECT
   // ==========================================================================
 
-  /// Salva resposta de um item (SELECT)
+  /// Salva resposta de um item tipo SELECT (OK, NOK, N/A)
   ///
-  /// Exemplo:
-  /// ```dart
-  /// await salvarRespostaSelect(
-  ///   sequenciaCat: 1,
-  ///   sequenciaItem: 1,
-  ///   resposta: 'OK',
-  ///   observacao: 'Tudo conforme',
-  /// );
-  /// ```
+  /// Usa atualização otimista:
+  /// 1. Atualiza UI imediatamente
+  /// 2. Salva no backend em background
+  /// 3. Se erro, reverte UI
   Future<void> salvarRespostaSelect({
     required int sequenciaCat,
     required int sequenciaItem,
@@ -183,6 +169,19 @@ class ChecklistViewModel extends BaseViewModel {
       }
     }
 
+    // Determina se é conforme
+    final conforme = resposta.toUpperCase() == 'OK';
+
+    // ✅ PASSO 1: ATUALIZA UI IMEDIATAMENTE (Optimistic Update)
+    _atualizarRespostaLocal(
+      sequenciaCat: sequenciaCat,
+      sequenciaItem: sequenciaItem,
+      respostaText: resposta,
+      observacao: observacao,
+      conforme: conforme,
+    );
+
+    // ✅ PASSO 2: Marca como salvando
     _isSaving = true;
     notifyListeners();
 
@@ -190,15 +189,22 @@ class ChecklistViewModel extends BaseViewModel {
     if (user == null) {
       MessengerService.showError('Usuário não autenticado');
       _isSaving = false;
+
+      // Reverte UI
+      _atualizarRespostaLocal(
+        sequenciaCat: sequenciaCat,
+        sequenciaItem: sequenciaItem,
+        respostaText: '',
+        observacao: null,
+        conforme: null,
+      );
+
       notifyListeners();
       return;
     }
 
     try {
-      // Determina se é conforme (OK = conforme, NOK/N/A = não conforme)
-      final conforme = resposta.toUpperCase() == 'OK';
-
-      // Salva no backend
+      // ✅ PASSO 3: Salva no backend (em background)
       await _repository.salvarRespostaItem(
         codChecklist: _checklist!.codChecklist,
         sequenciaCat: sequenciaCat,
@@ -210,25 +216,28 @@ class ChecklistViewModel extends BaseViewModel {
         password: user.password,
       );
 
-      // Atualiza localmente
+      if (kDebugMode) {
+        debugPrint('✅ [ChecklistVM] Resposta confirmada pelo backend!');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      // UI já está atualizada - não precisa fazer nada!
+    } catch (e, stack) {
+      if (kDebugMode) {
+        debugPrint('❌ [ChecklistVM] Erro ao salvar - REVERTENDO UI');
+        debugPrint('   Erro: $e');
+        debugPrint('   Stack: $stack');
+        debugPrint('═══════════════════════════════════════');
+      }
+
+      // ✅ REVERTE ATUALIZAÇÃO OTIMISTA
       _atualizarRespostaLocal(
         sequenciaCat: sequenciaCat,
         sequenciaItem: sequenciaItem,
-        respostaText: resposta,
-        observacao: observacao,
-        conforme: conforme,
+        respostaText: '',
+        observacao: null,
+        conforme: null,
       );
-
-      if (kDebugMode) {
-        debugPrint('✅ [ChecklistVM] Resposta salva!');
-        debugPrint('═══════════════════════════════════════');
-      }
-    } catch (e, stack) {
-      if (kDebugMode) {
-        debugPrint('❌ [ChecklistVM] Erro ao salvar resposta: $e');
-        debugPrint('Stack: $stack');
-        debugPrint('═══════════════════════════════════════');
-      }
 
       MessengerService.showError('Erro ao salvar resposta: $e');
     } finally {
@@ -237,7 +246,11 @@ class ChecklistViewModel extends BaseViewModel {
     }
   }
 
-  /// Salva resposta de um item (BOOLEAN)
+  // ==========================================================================
+  // 💾 SALVAR RESPOSTA DE ITEM - BOOLEAN
+  // ==========================================================================
+
+  /// Salva resposta de um item tipo BOOLEAN (SIM/NÃO)
   Future<void> salvarRespostaBoolean({
     required int sequenciaCat,
     required int sequenciaItem,
@@ -253,6 +266,15 @@ class ChecklistViewModel extends BaseViewModel {
       debugPrint('   Resposta: ${resposta ? "SIM" : "NÃO"}');
     }
 
+    // ✅ ATUALIZA UI IMEDIATAMENTE
+    _atualizarRespostaLocal(
+      sequenciaCat: sequenciaCat,
+      sequenciaItem: sequenciaItem,
+      respostaBoolean: resposta,
+      observacao: observacao,
+      conforme: resposta,
+    );
+
     _isSaving = true;
     notifyListeners();
 
@@ -260,6 +282,16 @@ class ChecklistViewModel extends BaseViewModel {
     if (user == null) {
       MessengerService.showError('Usuário não autenticado');
       _isSaving = false;
+
+      // Reverte
+      _atualizarRespostaLocal(
+        sequenciaCat: sequenciaCat,
+        sequenciaItem: sequenciaItem,
+        respostaBoolean: null,
+        observacao: null,
+        conforme: null,
+      );
+
       notifyListeners();
       return;
     }
@@ -271,30 +303,29 @@ class ChecklistViewModel extends BaseViewModel {
         sequenciaItem: sequenciaItem,
         respostaBoolean: resposta,
         observacao: observacao,
-        conforme: resposta, // TRUE = conforme
+        conforme: resposta,
         username: user.username,
         password: user.password,
       );
 
-      // Atualiza localmente
-      _atualizarRespostaLocal(
-        sequenciaCat: sequenciaCat,
-        sequenciaItem: sequenciaItem,
-        respostaBoolean: resposta,
-        observacao: observacao,
-        conforme: resposta,
-      );
-
       if (kDebugMode) {
-        debugPrint('✅ [ChecklistVM] Resposta salva!');
+        debugPrint('✅ [ChecklistVM] Resposta confirmada!');
         debugPrint('═══════════════════════════════════════');
       }
     } catch (e, stack) {
       if (kDebugMode) {
-        debugPrint('❌ [ChecklistVM] Erro ao salvar resposta: $e');
-        debugPrint('Stack: $stack');
-        debugPrint('═══════════════════════════════════════');
+        debugPrint('❌ [ChecklistVM] Erro - REVERTENDO');
+        debugPrint('   Stack: $stack');
       }
+
+      // Reverte
+      _atualizarRespostaLocal(
+        sequenciaCat: sequenciaCat,
+        sequenciaItem: sequenciaItem,
+        respostaBoolean: null,
+        observacao: null,
+        conforme: null,
+      );
 
       MessengerService.showError('Erro ao salvar resposta: $e');
     } finally {
@@ -303,7 +334,11 @@ class ChecklistViewModel extends BaseViewModel {
     }
   }
 
-  /// Salva resposta de um item (TEXT)
+  // ==========================================================================
+  // 💾 SALVAR RESPOSTA DE ITEM - TEXT
+  // ==========================================================================
+
+  /// Salva resposta de um item tipo TEXT (texto livre)
   Future<void> salvarRespostaText({
     required int sequenciaCat,
     required int sequenciaItem,
@@ -319,6 +354,14 @@ class ChecklistViewModel extends BaseViewModel {
       debugPrint('   Resposta: $resposta');
     }
 
+    // ✅ ATUALIZA UI IMEDIATAMENTE
+    _atualizarRespostaLocal(
+      sequenciaCat: sequenciaCat,
+      sequenciaItem: sequenciaItem,
+      respostaText: resposta,
+      observacao: observacao,
+    );
+
     _isSaving = true;
     notifyListeners();
 
@@ -326,6 +369,15 @@ class ChecklistViewModel extends BaseViewModel {
     if (user == null) {
       MessengerService.showError('Usuário não autenticado');
       _isSaving = false;
+
+      // Reverte
+      _atualizarRespostaLocal(
+        sequenciaCat: sequenciaCat,
+        sequenciaItem: sequenciaItem,
+        respostaText: '',
+        observacao: null,
+      );
+
       notifyListeners();
       return;
     }
@@ -341,24 +393,23 @@ class ChecklistViewModel extends BaseViewModel {
         password: user.password,
       );
 
-      // Atualiza localmente
-      _atualizarRespostaLocal(
-        sequenciaCat: sequenciaCat,
-        sequenciaItem: sequenciaItem,
-        respostaText: resposta,
-        observacao: observacao,
-      );
-
       if (kDebugMode) {
-        debugPrint('✅ [ChecklistVM] Resposta salva!');
+        debugPrint('✅ [ChecklistVM] Resposta confirmada!');
         debugPrint('═══════════════════════════════════════');
       }
     } catch (e, stack) {
       if (kDebugMode) {
-        debugPrint('❌ [ChecklistVM] Erro ao salvar resposta: $e');
-        debugPrint('Stack: $stack');
-        debugPrint('═══════════════════════════════════════');
+        debugPrint('❌ [ChecklistVM] Erro - REVERTENDO');
+        debugPrint('   Stack: $stack');
       }
+
+      // Reverte
+      _atualizarRespostaLocal(
+        sequenciaCat: sequenciaCat,
+        sequenciaItem: sequenciaItem,
+        respostaText: '',
+        observacao: null,
+      );
 
       MessengerService.showError('Erro ao salvar resposta: $e');
     } finally {
@@ -368,10 +419,13 @@ class ChecklistViewModel extends BaseViewModel {
   }
 
   // ==========================================================================
-  // 🔄 ATUALIZAR RESPOSTA LOCAL
+  // 🔄 ATUALIZAR RESPOSTA LOCAL (Optimistic Update)
   // ==========================================================================
 
-  /// Atualiza resposta localmente (após salvar no backend)
+  /// Atualiza resposta localmente na UI
+  ///
+  /// Chamado ANTES de salvar no backend para feedback instantâneo
+  /// Se backend falhar, este método é chamado novamente para reverter
   void _atualizarRespostaLocal({
     required int sequenciaCat,
     required int sequenciaItem,
@@ -441,8 +495,11 @@ class ChecklistViewModel extends BaseViewModel {
         (_checklist!.itensRespondidos / _checklist!.totalItens) * 100;
     _checklist = _checklist!.copyWith(percentualConclusao: novoPercentual);
 
+    // ✅ NOTIFICA LISTENERS - Atualiza UI
+    notifyListeners();
+
     if (kDebugMode) {
-      debugPrint('✅ Resposta atualizada localmente');
+      debugPrint('✅ Resposta atualizada localmente (UI já mudou!)');
       debugPrint('   Progresso: ${novoPercentual.toStringAsFixed(1)}%');
       debugPrint(
         '   Itens respondidos: ${_checklist!.itensRespondidos}/${_checklist!.totalItens}',

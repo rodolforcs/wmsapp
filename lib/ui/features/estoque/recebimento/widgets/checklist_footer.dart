@@ -103,8 +103,16 @@ class ChecklistFooter extends StatelessWidget {
   Widget _buildBotaoRascunho(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onSalvarRascunho,
-      icon: const Icon(Icons.save_outlined),
-      label: const Text('Salvar Rascunho'),
+      icon: const Icon(
+        Icons.save_outlined,
+        color: Colors.blue,
+      ),
+      label: const Text(
+        'Salvar Rascunho',
+        style: TextStyle(
+          color: Colors.blue,
+        ),
+      ),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
       ),

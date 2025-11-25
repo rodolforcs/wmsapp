@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:wmsapp/data/models/checklist/checklist_model.dart';
-import 'package:wmsapp/data/models/checklist/checklist_item_model.dart';
+//import 'package:wmsapp/data/models/checklist/checklist_item_model.dart';
 import 'package:wmsapp/data/services/i_api_service.dart';
 
 /// 📋 Service responsável pela comunicação com APIs de Checklist
@@ -98,11 +98,10 @@ class ChecklistService {
       if (kDebugMode) {
         debugPrint('═══════════════════════════════════════');
         debugPrint('❌ [ChecklistService] Erro ao buscar checklist');
-        debugPrint('   Mensagem do backend: $e'); // mostra a mensagem detalhada
+        debugPrint('   Mensagem do backend: $e');
         debugPrint('   Stack: $stack');
         debugPrint('═══════════════════════════════════════');
       }
-      // Aqui você pode transformar em mensagem amigável
       throw Exception(
         e.toString().contains('Template não encontrado')
             ? 'Checklist não encontrado para o fornecedor informado'
@@ -156,16 +155,16 @@ class ChecklistService {
 
       final userForAuth = '$username@${dotenv.env['DOMAIN']}';
 
-      // Monta payload
+      // ✅ Monta payload com HÍFENS (padrão Progress)
       final payload = {
-        'codChecklist': codChecklist,
-        'sequenciaCat': sequenciaCat,
-        'sequenciaItem': sequenciaItem,
-        if (respostaBoolean != null) 'respostaBoolean': respostaBoolean,
-        if (respostaText != null) 'respostaText': respostaText,
-        if (respostaNumber != null) 'respostaNumber': respostaNumber,
+        'cod-checklist': codChecklist,
+        'sequencia-cat': sequenciaCat,
+        'sequencia-item': sequenciaItem,
+        if (respostaBoolean != null) 'resposta-boolean': respostaBoolean,
+        if (respostaText != null) 'resposta-text': respostaText,
+        if (respostaNumber != null) 'resposta-number': respostaNumber,
         if (respostaDate != null)
-          'respostaDate': respostaDate.toIso8601String(),
+          'resposta-date': respostaDate.toIso8601String(),
         if (observacao != null && observacao.isNotEmpty)
           'observacao': observacao,
         if (conforme != null) 'conforme': conforme,
@@ -176,9 +175,9 @@ class ChecklistService {
         debugPrint(jsonEncode(payload));
       }
 
-      // Chama API PUT
+      // Chama API POST
       final response = await _apiService.post(
-        'rep/v1/checklist_put_item/',
+        'rep/v1/api_checklist_post_item/',
         body: payload,
         username: userForAuth,
         password: password,
@@ -231,13 +230,15 @@ class ChecklistService {
 
       final userForAuth = '$username@${dotenv.env['DOMAIN']}';
 
-      // Monta payload
+      // ✅ Monta payload com HÍFENS (padrão Progress)
       final payload = {
-        'codChecklist': codChecklist,
+        'cod-checklist': codChecklist, // ✅ CORRIGIDO: era 'codChecklist'
         'aprovado': aprovado,
         if (observacaoGeral != null && observacaoGeral.isNotEmpty)
-          'observacaoGeral': observacaoGeral,
-        'dtFinalizacao': DateTime.now().toIso8601String(),
+          'observacao-geral':
+              observacaoGeral, // ✅ CORRIGIDO: era 'observacaoGeral'
+        'dt-finalizacao': DateTime.now()
+            .toIso8601String(), // ✅ CORRIGIDO: era 'dtFinalizacao'
       };
 
       if (kDebugMode) {
@@ -245,9 +246,9 @@ class ChecklistService {
         debugPrint(jsonEncode(payload));
       }
 
-      // Chama API PUT
+      // Chama API POST
       final response = await _apiService.post(
-        'rep/v1/checklist_put_finalizar/',
+        'rep/v1/api_checklist_post_finalizar/',
         body: payload,
         username: userForAuth,
         password: password,
@@ -313,9 +314,9 @@ class ChecklistService {
         'rep/v1/checklist_post_evidencia/',
         filePath: caminhoFoto,
         fields: {
-          'codChecklist': codChecklist.toString(),
-          'sequenciaCat': sequenciaCat.toString(),
-          'sequenciaItem': sequenciaItem.toString(),
+          'cod-checklist': codChecklist.toString(),
+          'sequencia-cat': sequenciaCat.toString(),
+          'sequencia-item': sequenciaItem.toString(),
           if (descricao != null) 'descricao': descricao,
         },
         username: userForAuth,

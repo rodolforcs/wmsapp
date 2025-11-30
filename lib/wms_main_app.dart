@@ -33,6 +33,7 @@ class _WmsMainAppState extends State<WmsMainApp> {
       title: 'wmsapp',
       theme: AppTheme.theme,
       scaffoldMessengerKey: MessengerService.messengerKey,
+      debugShowCheckedModeBanner: false,
 
       routerConfig: appRouter.router,
     );

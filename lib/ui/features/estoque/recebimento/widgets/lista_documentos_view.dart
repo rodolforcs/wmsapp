@@ -79,7 +79,7 @@ class _HeaderWidget extends StatelessWidget {
             // Campo de busca
             TextField(
               decoration: InputDecoration(
-                hintText: 'Buscar por número ou estabelecimento...',
+                hintText: 'Buscar por NF, fornecedor ou código...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: viewModel.searchTerm.isNotEmpty
                     ? IconButton(

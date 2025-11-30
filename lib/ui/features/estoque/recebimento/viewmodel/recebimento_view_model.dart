@@ -48,9 +48,13 @@ class RecebimentoViewModel extends BaseViewModel {
 
     final termLower = _searchTerm.toLowerCase();
     return _documentos.where((doc) {
+      // ✅ Busca por:
+      // - Número da nota (nroDocto)
+      // - Nome do fornecedor (nomeAbreviado)
+      // - Código do fornecedor (codEmitente)
       return doc.nroDocto.toLowerCase().contains(termLower) ||
-          doc.codEstabel.toLowerCase().contains(termLower) ||
-          doc.situacao.toLowerCase().contains(termLower);
+          doc.nomeAbreviado.toLowerCase().contains(termLower) ||
+          doc.codEmitente.toString().contains(termLower);
     }).toList();
   }
 

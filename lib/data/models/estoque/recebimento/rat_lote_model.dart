@@ -2,6 +2,8 @@
 // RAT LOTE MODEL - Modelo de rateio de lote (rat-lote do Datasul)
 // ============================================================================
 
+import 'package:intl/intl.dart';
+
 /// Modelo que representa o rateio de estoque de um item
 ///
 /// Define onde o item será armazenado fisicamente:
@@ -81,12 +83,13 @@ class RatLoteModel {
 
   /// Converte o RatLote para JSON
   Map<String, dynamic> toJson() {
+    final dateFormat = DateFormat('yyyy-mm-dd');
     return {
       'cod-depos': codDepos,
       'cod-localizacao': codLocaliz,
       'cod-lote': codLote,
       'qtde-lote': qtdeLote,
-      if (dtValidade != null) 'dt-vali-lote': dtValidade!.toIso8601String(),
+      if (dtValidade != null) 'dt-vali-lote': dateFormat.format(dtValidade!),
       'is-editavel': isEditavel,
       'sequencia': sequencia,
     };

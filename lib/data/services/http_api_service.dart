@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 
 class HttpApiService implements IApiService {
-  final String _apiBaseUrl = dotenv.env['API_BASE_URL_TST']!;
+  final String _apiBaseUrl = dotenv.env['API_BASE_URL_PRD']!;
 
   // Função helper para criar o header do basic auth
   Map<String, String> _createHeaders({String? username, String? password}) {

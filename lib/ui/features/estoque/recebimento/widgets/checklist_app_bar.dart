@@ -33,7 +33,7 @@ class ChecklistAppBar extends StatelessWidget implements PreferredSizeWidget {
                 style: const TextStyle(fontSize: 16),
               ),
               Text(
-                'NF: $nroDocto Série: $serieDocto',
+                'NF: $nroDocto Série:$serieDocto',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.normal,

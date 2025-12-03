@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/intl.dart';
 import 'package:wmsapp/data/models/estoque/recebimento/rat_lote_model.dart';
 
 import '../models/estoque/recebimento/docto_fisico_model.dart';
@@ -123,7 +124,9 @@ class ConferenciaSyncService {
           }
 
           if (rateio.dtValidade != null) {
-            ratJson['dt-vali-lote'] = rateio.dtValidade!.toIso8601String();
+            ratJson['dt-vali-lote'] = DateFormat(
+              'yyyy-MM-dd',
+            ).format(rateio.dtValidade!);
           }
 
           ttRatLote.add(ratJson);
@@ -431,7 +434,7 @@ class ConferenciaSyncService {
           'cod-lote': rateio.codLote,
           'qtde-lote': rateio.qtdeLote,
           if (rateio.dtValidade != null)
-            'dt-vali-lote': rateio.dtValidade!.toIso8601String(),
+            'dt-vali-lote': DateFormat('yyyy-MM-dd').format(rateio.dtValidade!),
         },
       };
 
@@ -582,7 +585,7 @@ class ConferenciaSyncService {
           if (rateio.codLote.isNotEmpty) 'lote': rateio.codLote,
           'quantidade': rateio.qtdeLote,
           if (rateio.dtValidade != null)
-            'dt-vali-lote': rateio.dtValidade!.toIso8601String(),
+            'dt-vali-lote': DateFormat('yyyy-MM-dd').format(rateio.dtValidade!),
         },
       };
 

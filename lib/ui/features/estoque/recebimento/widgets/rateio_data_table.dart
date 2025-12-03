@@ -183,10 +183,17 @@ class _RateioDataTableState extends State<RateioDataTable> {
           _TextEditableCell(
             value: rateio.codLocaliz,
             onChanged: (valor) {
+              debugPrint('📝 Localização mudou: "$valor"');
+              debugPrint('   Valor anterior: "${rateio.codLocaliz}"');
+
               if (valor != rateio.codLocaliz) {
                 // ✅ Marca como editado
                 setState(() => _rateiosaEditados.add(index));
                 final atualizado = rateio.copyWith(codLocalizacao: valor);
+
+                debugPrint('✅ Após copyWith:');
+                debugPrint('   codLocaliz: "${atualizado.codLocaliz}"');
+
                 widget.onRateioChanged(index, atualizado);
               }
             },

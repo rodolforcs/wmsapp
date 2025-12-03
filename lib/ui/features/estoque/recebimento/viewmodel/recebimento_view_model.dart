@@ -974,6 +974,59 @@ class RecebimentoViewModel extends BaseViewModel {
     notifyListeners();
   }
 
+  /// Atualiza rateio LOCALMENTE (sem marcar para sync)
+  /// Usado quando usuário EDITA campos, antes de clicar em Salvar
+  void atualizarRateioLocal(
+    int nrSequencia,
+    int rateioIndex,
+    RatLoteModel rateioAtualizado,
+  ) {
+    if (_documentoSelecionado == null) return;
+
+    final item = _documentoSelecionado!.itensDoc.firstWhere(
+      (item) => item.nrSequencia == nrSequencia,
+      orElse: () => throw StateError('Item não encontrado'),
+    );
+
+    if (!item.hasRateios || rateioIndex >= item.rateios!.length) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Índice de rateio inválido: $rateioIndex');
+      }
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint('📝 [LOCAL] Atualizando rateio index=$rateioIndex:');
+      debugPrint(
+        '   Depósito: "${item.rateios![rateioIndex].codDepos}" → "${rateioAtualizado.codDepos}"',
+      );
+      debugPrint(
+        '   Localização: "${item.rateios![rateioIndex].codLocaliz}" → "${rateioAtualizado.codLocaliz}"',
+      );
+      debugPrint(
+        '   Lote: "${item.rateios![rateioIndex].codLote}" → "${rateioAtualizado.codLote}"',
+      );
+      debugPrint(
+        '   Quantidade: ${item.rateios![rateioIndex].qtdeLote} → ${rateioAtualizado.qtdeLote}',
+      );
+      debugPrint('   ❌ NÃO marca como alteradoLocal (só atualiza memória)');
+    }
+
+    // ✅ Substitui rateio na lista
+    item.rateios![rateioIndex] = rateioAtualizado;
+
+    // ✅ Recalcula quantidade conferida do item
+    item.qtdeConferida = item.rateios!.fold<double>(
+      0.0,
+      (sum, rat) => sum + rat.qtdeLote,
+    );
+
+    // ❌ NÃO marca como alteradoLocal!
+    // Só marca quando clicar em SALVAR
+
+    notifyListeners();
+  }
+
   /// Remove rateio por ÍNDICE
   void removerRateioPorIndice(int nrSequencia, int rateioIndex) {
     if (_documentoSelecionado == null) return;

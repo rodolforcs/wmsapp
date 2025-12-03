@@ -355,9 +355,10 @@ class _ItemConferenciaCardState extends State<ItemConferenciaCard> {
                   rateios: widget.item.rateios ?? [],
                   controlaLote: widget.item.controlaLote, // ← ADICIONE
                   onRateioChanged: (index, rateioAtualizado) {
-                    widget.onRateioQuantidadeChanged(
+                    viewModel.atualizarRateioLocal(
+                      widget.item.nrSequencia,
                       index,
-                      rateioAtualizado.qtdeLote,
+                      rateioAtualizado,
                     );
                   },
                   onRemover: widget.onRemoverRateio != null

@@ -83,7 +83,7 @@ class RatLoteModel {
 
   /// Converte o RatLote para JSON
   Map<String, dynamic> toJson() {
-    final dateFormat = DateFormat('yyyy-mm-dd');
+    final dateFormat = DateFormat('dd/MM/yyyy');
     return {
       'cod-depos': codDepos,
       'cod-localizacao': codLocaliz,

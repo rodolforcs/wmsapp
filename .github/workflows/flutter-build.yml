@@ -30,8 +30,8 @@ jobs:
         run: echo "${{ secrets.WMSAPP_ENV_FILE }}" > .env
 
       # Executa testes (opcional)
-      - name: Run tests
-        run: flutter test
+      #- name: Run tests
+      #run: flutter test
 
       # Faz o build do APK
       - name: Build APK

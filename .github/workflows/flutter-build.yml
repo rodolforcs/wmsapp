@@ -25,6 +25,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Aqui recriamos o .env a partir do secret
+      - name: Create .env file
+        run: echo "${{ secrets.WMSAPP_ENV_FILE }}" > .env
+
       # Executa testes (opcional)
       - name: Run tests
         run: flutter test

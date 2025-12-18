@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.canpack.wmsapp"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion    
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

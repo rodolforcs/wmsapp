@@ -116,11 +116,22 @@ class HttpApiService implements IApiService {
         body: jsonBody,
       );
 
+      // ✅ NOVO: Log do Status Code SEMPRE
+      print('═══════════════════════════════════════');
+      print('📥 Response Status: ${response.statusCode}');
+      print('═══════════════════════════════════════');
+
       // Tenta decodificar o corpo da resposta em todos os casos.
       // Se o corpo estiver vazio, retorna um objeto vazio para evitar erros de parsing.
       final responseBody = response.body.isNotEmpty
           ? json.decode(response.body)
           : {};
+
+      // ✅ NOVO: Log do Body SEMPRE (sucesso ou erro)
+      print('═══════════════════════════════════════');
+      print('📥 Response Body COMPLETO:');
+      print(response.body.isNotEmpty ? response.body : '(vazio)');
+      print('═══════════════════════════════════════');
 
       // Se a requisição foi um sucesso (2xx), retorna o corpo.
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -133,20 +144,59 @@ class HttpApiService implements IApiService {
          ******************************************************************/
         String errorMessage = 'Erro desconhecido (${response.statusCode})';
 
+        // ✅ NOVO: Log da estrutura do erro
+        print('═══════════════════════════════════════');
+        print('❌ ERRO DO BACKEND:');
+        print('Status Code: ${response.statusCode}');
+        print('Response Body Type: ${responseBody.runtimeType}');
+        print(
+          'Response Body Keys: ${responseBody is Map ? responseBody.keys.toList() : 'N/A'}',
+        );
+        print('═══════════════════════════════════════');
+
         // Estrutura de erro do JsonAPIResponseBuilder:BadRequest
         if (responseBody is Map &&
             responseBody.containsKey('RowErrors') &&
             responseBody['RowErrors'] is List &&
             (responseBody['RowErrors'] as List).isNotEmpty) {
           final firstError = (responseBody['RowErrors'] as List).first;
+
+          // ✅ NOVO: Log do erro estruturado
+          print('═══════════════════════════════════════');
+          print('📋 RowErrors encontrado:');
+          print(json.encode(firstError));
+          print('═══════════════════════════════════════');
+
           if (firstError is Map && firstError.containsKey('ErrorDescription')) {
             errorMessage = firstError['ErrorDescription'];
+
+            // ✅ NOVO: Log de campos adicionais
+            if (firstError.containsKey('ErrorNum')) {
+              print('ErrorNum: ${firstError['ErrorNum']}');
+            }
+            if (firstError.containsKey('RowNumber')) {
+              print('RowNumber: ${firstError['RowNumber']}');
+            }
           }
         }
         // Estrutura de erro do JsonAPIError (caso você use no futuro)
         else if (responseBody is Map && responseBody.containsKey('message')) {
           errorMessage = responseBody['message'];
+          print('Message encontrado: $errorMessage');
         }
+        // ✅ NOVO: Tentar outros formatos de erro comuns do Progress
+        else if (responseBody is Map && responseBody.containsKey('error')) {
+          errorMessage = responseBody['error'];
+          print('Error encontrado: $errorMessage');
+        } else if (responseBody is Map &&
+            responseBody.containsKey('error-message')) {
+          errorMessage = responseBody['error-message'];
+          print('Error-message encontrado: $errorMessage');
+        }
+
+        print('═══════════════════════════════════════');
+        print('❌ Mensagem de erro final: $errorMessage');
+        print('═══════════════════════════════════════');
 
         // Lança uma exceção com a mensagem de erro específica.
         throw Exception(errorMessage);

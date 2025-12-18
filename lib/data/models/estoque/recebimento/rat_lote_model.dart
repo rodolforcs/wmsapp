@@ -83,12 +83,12 @@ class RatLoteModel {
 
   /// Converte o RatLote para JSON
   Map<String, dynamic> toJson() {
-    final dateFormat = DateFormat('dd/MM/yyyy');
+    final dateFormat = DateFormat('yyyy-MM-dd');
     return {
       'cod-depos': codDepos,
       'cod-localizacao': codLocaliz,
-      'cod-lote': codLote,
-      'qtde-lote': qtdeLote,
+      'lote': codLote,
+      'quantidade': qtdeLote,
       if (dtValidade != null) 'dt-vali-lote': dateFormat.format(dtValidade!),
       'is-editavel': isEditavel,
       'sequencia': sequencia,

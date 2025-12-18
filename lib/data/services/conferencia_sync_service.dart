@@ -125,7 +125,7 @@ class ConferenciaSyncService {
 
           if (rateio.dtValidade != null) {
             ratJson['dt-vali-lote'] = DateFormat(
-              'dd/MM/yyyy',
+              'yyyy-MM-dd',
             ).format(rateio.dtValidade!);
           }
 
@@ -431,10 +431,10 @@ class ConferenciaSyncService {
         'rateio': {
           'cod-depos': rateio.codDepos,
           'cod-localiz': rateio.codLocaliz,
-          'cod-lote': rateio.codLote,
-          'qtde-lote': rateio.qtdeLote,
+          'lote': rateio.codLote,
+          'quantidade': rateio.qtdeLote,
           if (rateio.dtValidade != null)
-            'dt-vali-lote': DateFormat('dd/MM/yyyy').format(rateio.dtValidade!),
+            'dt-vali-lote': DateFormat('yyyy-MM-dd').format(rateio.dtValidade!),
         },
       };
 
@@ -585,7 +585,7 @@ class ConferenciaSyncService {
           if (rateio.codLote.isNotEmpty) 'lote': rateio.codLote,
           'quantidade': rateio.qtdeLote,
           if (rateio.dtValidade != null)
-            'dt-vali-lote': DateFormat('dd/MM/yyyy').format(rateio.dtValidade!),
+            'dt-vali-lote': DateFormat('yyyy-MM-dd').format(rateio.dtValidade!),
         },
       };
 

@@ -1,0 +1,41 @@
+name: Flutter Build
+
+on:
+  push:
+    branches:
+      - main # ou a branch que você usa
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Faz checkout do código
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Instala Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.2" # ajuste para a versão do seu projeto
+
+      # Instala dependências
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Executa testes (opcional)
+      - name: Run tests
+        run: flutter test
+
+      # Faz o build do APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # Salva o APK como artefato para download
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

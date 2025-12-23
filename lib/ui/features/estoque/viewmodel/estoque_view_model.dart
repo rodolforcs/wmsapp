@@ -29,8 +29,9 @@ class EstoqueViewModel extends ChangeNotifier {
         isEnabled: permissions.podeTransferir, // Mock: Habilitado
       ),
       EstoqueModuleOptionModel(
-        label: 'Separação',
-        icon: Icons.checklist_rtl,
+        label: 'Requisições',
+        icon: Icons.shelves,
+        //icon: Icons.checklist_rtl,
         route: '/estoque/separacao',
         isEnabled: permissions.podeSeparar, // Mock: Habilitado
       ),
@@ -40,6 +41,12 @@ class EstoqueViewModel extends ChangeNotifier {
         route: '/estoque/transferencia',
         isEnabled:
             permissions.podeTransferir, // Mock: Desabilitado para teste de UI
+      ),
+      EstoqueModuleOptionModel(
+        label: 'Inventário',
+        icon: Icons.inventory_sharp,
+        route: 'estoque/inventario',
+        isEnabled: permissions.estoque,
       ),
     ];
     // Não é necessário notifyListeners() aqui, pois é chamado no construtor.

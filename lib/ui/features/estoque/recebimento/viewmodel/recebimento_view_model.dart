@@ -302,7 +302,7 @@ class RecebimentoViewModel extends BaseViewModel {
 
     if (!item.hasRateios) {
       if (kDebugMode) {
-        debugPrint('⚠️ Item seq=$nrSequencia não tem rateios');
+        debugPrint('⚠️ Item seq=$nrSequencia não tem rateios!');
       }
       return;
     }
